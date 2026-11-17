@@ -28,7 +28,9 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsup && tsc --noEmit false --emitDeclarationOnly --declaration --declarationMap --outDir dist",
+    "build": "tsup && tsc --noEmit false --emitDeclarationOnly --declaration --declarationMap --outDir dist && node scripts/fix-dts-extensions.mjs dist",
+    "check:consumer-types": "tsc -p scripts/consumer-types/tsconfig.json",
+    "prepublishOnly": "pnpm run check:consumer-types",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "prepack": "pnpm run build",
