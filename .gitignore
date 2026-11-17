@@ -8,6 +8,13 @@ obj/
 nupkgs/
 signed-samples/
 
+# The DSS validation gate resolves its jars and compiles its helper in place.
+# Unanchored on purpose: the gate is vendored under both dotnet/ and
+# typescript/signing/, so a root-anchored pattern would match neither.
+**/tools/dss/lib/
+**/tools/dss/*.class
+**/dss-summary.md
+
 *.user
 *.suo
 *.nupkg

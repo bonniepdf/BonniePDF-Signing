@@ -13,6 +13,8 @@ on:
       - 'BonniePDF.Signing.SampleGen/**'
       - 'BonniePDF/**'
       - 'scripts/pdfsig-validate.sh'
+      - 'shared/**'
+      - 'tools/dss/**'
       - '.github/workflows/signing-ci.yml'
   pull_request:
     branches: [master]
@@ -22,6 +24,8 @@ on:
       - 'BonniePDF.Signing.SampleGen/**'
       - 'BonniePDF/**'
       - 'scripts/pdfsig-validate.sh'
+      - 'shared/**'
+      - 'tools/dss/**'
       - '.github/workflows/signing-ci.yml'
 
 permissions:
@@ -91,3 +95,36 @@ jobs:
 
       - name: Validate signatures with pdfsig
         run: bash scripts/pdfsig-validate.sh signed-samples
+
+  conformance:
+    name: PAdES conformance (EU DSS)
+    runs-on: ubuntu-latest
+    # `pdfsig` proves a signature verifies. It says nothing about which PAdES
+    # baseline level the signature reaches - and the level is the claim the
+    # product sells. This job checks the claim against the European Commission's
+    # own validator, offline, with only the samples' throwaway CA trusted.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Cache the DSS validator
+        uses: actions/cache@v4
+        with:
+          path: tools/dss/lib
+          key: dss-gate-${{ hashFiles('tools/dss/pom.xml') }}
+
+      - name: Generate signed sample PDFs
+        run: dotnet run --project BonniePDF.Signing.SampleGen --configuration Release -- signed-samples
+
+      - name: Check every signature reaches the level it claims
+        run: bash tools/dss/validate.sh signed-samples

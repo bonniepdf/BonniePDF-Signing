@@ -1,0 +1,66 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.bonniepdf</groupId>
+  <artifactId>dss-gate</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <properties>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Pin the validator version so the gate is reproducible. Bump deliberately:
+         a new DSS release can tighten a baseline requirement, and finding that
+         out from a moving dependency is the opposite of what this gate is for. -->
+    <dss.version>6.5</dss.version>
+  </properties>
+
+  <dependencies>
+    <!-- The European Commission's Digital Signature Service: the reference
+         implementation behind the EU's own signature validation, and what a
+         buyer's validator is most likely to agree with. Resolved from Maven
+         Central; used only as a CI tool, never shipped or linked into the
+         product.
+
+         Licence: LGPL-2.1 (see the sd-dss parent POM). A CI gate is neither
+         distributed nor linked into anything we ship, so the copyleft terms are
+         not engaged - the same posture as the veraPDF gate in BonniePDF-NET.
+         Do not take this as permission to depend on it from the library. -->
+    <dependency>
+      <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+      <artifactId>dss-pades-pdfbox</artifactId>
+      <version>${dss.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+      <artifactId>dss-validation</artifactId>
+      <version>${dss.version}</version>
+    </dependency>
+    <!-- The default validation policy. Without it DSS cannot start. -->
+    <dependency>
+      <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+      <artifactId>dss-policy-jaxb</artifactId>
+      <version>${dss.version}</version>
+    </dependency>
+    <!-- DSS requires one CMS implementation to be chosen explicitly. -->
+    <dependency>
+      <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+      <artifactId>dss-cms-object</artifactId>
+      <version>${dss.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+      <artifactId>dss-utils-apache-commons</artifactId>
+      <version>${dss.version}</version>
+    </dependency>
+    <!-- Without a binding, DSS's diagnosis of a rejected structure is silently
+         discarded - which is exactly the information this gate exists to surface. -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>2.0.16</version>
+    </dependency>
+  </dependencies>
+</project>

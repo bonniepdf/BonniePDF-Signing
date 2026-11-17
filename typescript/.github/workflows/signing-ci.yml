@@ -87,3 +87,45 @@ jobs:
 
       - name: Validate signatures with pdfsig
         run: bash signing/scripts/pdfsig-validate.sh signing/signed-samples
+
+  conformance:
+    name: PAdES conformance (EU DSS)
+    runs-on: ubuntu-latest
+    # `pdfsig` proves a signature verifies. It says nothing about which PAdES
+    # baseline level the signature reaches - and the level is the claim the
+    # product sells. This job checks the claim against the European Commission's
+    # own validator, offline, with only the samples' throwaway CA trusted.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core
+        # The sample generator resolves @bonniepdf/core as a consumer would.
+        run: pnpm --filter @bonniepdf/core run build
+
+      - name: Cache the DSS validator
+        uses: actions/cache@v4
+        with:
+          path: signing/tools/dss/lib
+          key: dss-gate-${{ hashFiles('signing/tools/dss/pom.xml') }}
+
+      - name: Generate signed sample PDFs
+        run: pnpm exec tsx signing/scripts/generate-signed-samples.ts signing/signed-samples
+
+      - name: Check every signature reaches the level it claims
+        run: bash signing/tools/dss/validate.sh signing/signed-samples
