@@ -14,19 +14,14 @@ import { signPdf } from '../src/signPdf';
 import { SigningAlgorithm } from '../src/SigningAlgorithm';
 import type { PadesLevel } from '../src/SignatureSettings';
 import { createDemoPki, TSA_URL } from '../examples/support/demo-pki';
+import { signingFixtures, PFX_PASSWORD } from '../tests/helpers/fixtures';
 import { buildSignedAgreement } from '../examples/signed-agreement';
 import { buildSealedCertificate } from '../examples/sealed-certificate';
-import { writeFileSync, readFileSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const fixtures = join(here, '..', 'tests', 'fixtures', 'signing');
-const certRsa = readFileSync(join(fixtures, 'cert-rsa.pem'), 'utf8');
-const keyRsa = readFileSync(join(fixtures, 'key-rsa.pem'), 'utf8');
-const certEc = readFileSync(join(fixtures, 'cert-ec.pem'), 'utf8');
-const keyEc = readFileSync(join(fixtures, 'key-ec.pem'), 'utf8');
-const pfxRsa = new Uint8Array(readFileSync(join(fixtures, 'test-rsa.pfx')));
+// Throwaway signer identities, generated for this run; none is committed.
+const { certRsa, keyRsa, certEc, keyEc, pfxRsa } = await signingFixtures();
 
 // Every first-party surface that generates documents declares its own tier.
 // Sample generation is tooling, not production use, so `evaluation` is honest.
@@ -82,7 +77,7 @@ async function main(): Promise<void> {
     join(outDir, 'pades-bb-pfx.pdf'),
     await signPdf(await makePdf(), {
       pkcs12: pfxRsa,
-      pkcs12Password: 'pfxpw',
+      pkcs12Password: PFX_PASSWORD,
       padesLevel: 'b-b',
       reason: 'Approved',
     })

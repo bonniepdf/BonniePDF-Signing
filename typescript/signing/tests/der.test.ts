@@ -2,11 +2,9 @@ import { describe, it, expect } from 'vitest';
 import * as der from '../src/asn1/der';
 import { extractIssuerAndSerial, extractSubjectPublicKeyInfo } from '../src/asn1/x509';
 import { pemToDer } from '../src/pem';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { signingFixtures } from './helpers/fixtures';
 
-const fixtures = join(__dirname, 'fixtures', 'signing');
-const certRsa = readFileSync(join(fixtures, 'cert-rsa.pem'), 'utf8');
+const { certRsa } = await signingFixtures();
 
 describe('DER encoder', () => {
   it('encodes OID 1.2.840.113549.1.7.2 (signedData)', () => {

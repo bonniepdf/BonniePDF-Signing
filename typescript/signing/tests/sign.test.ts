@@ -6,14 +6,9 @@ import { SigningAlgorithm } from '../src/SigningAlgorithm';
 import { latin1Decode, indexOfAscii } from '../src/pdf';
 import { readNode } from '../src/asn1/der';
 import { verifyCms } from './helpers/cms';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { signingFixtures } from './helpers/fixtures';
 
-const fixtures = join(__dirname, 'fixtures', 'signing');
-const certRsa = readFileSync(join(fixtures, 'cert-rsa.pem'), 'utf8');
-const keyRsa = readFileSync(join(fixtures, 'key-rsa.pem'), 'utf8');
-const certEc = readFileSync(join(fixtures, 'cert-ec.pem'), 'utf8');
-const keyEc = readFileSync(join(fixtures, 'key-ec.pem'), 'utf8');
+const { certRsa, keyRsa, certEc, keyEc } = await signingFixtures();
 
 /** Generate a simple one-page PDF with BonniePDF. */
 async function makePdf(): Promise<Uint8Array> {

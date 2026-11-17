@@ -3,12 +3,9 @@ import { buildSignedData } from '../src/cms';
 import { getAlgorithmParams, SigningAlgorithm } from '../src/SigningAlgorithm';
 import { pemToDer } from '../src/pem';
 import { parseCms, verifyCms } from './helpers/cms';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { signingFixtures } from './helpers/fixtures';
 
-const fixtures = join(__dirname, 'fixtures', 'signing');
-const certRsa = readFileSync(join(fixtures, 'cert-rsa.pem'), 'utf8');
-const keyRsa = readFileSync(join(fixtures, 'key-rsa.pem'), 'utf8');
+const { certRsa, keyRsa, certEc } = await signingFixtures();
 
 const OID_SIGNED_DATA = '1.2.840.113549.1.7.2';
 
@@ -49,7 +46,6 @@ describe('CMS SignedData builder', () => {
   });
 
   it('fails verification if the certificate does not match', async () => {
-    const certEc = readFileSync(join(fixtures, 'cert-ec.pem'), 'utf8');
     const { cms } = await buildRsaCms(new TextEncoder().encode('payload'));
     // Verifying an RSA-signed envelope against the EC cert should not succeed.
     await expect(verifyCms(cms, certEc, { hashName: 'SHA-256', keyType: 'rsa' })).rejects.toBeDefined();

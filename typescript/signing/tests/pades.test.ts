@@ -9,12 +9,9 @@ import { verifyCms, parseCms, readContents, signedAttrsContainOid } from './help
 import * as der from '../src/asn1/der';
 import { Oids } from '../src/asn1/oids';
 import { readNode } from '../src/asn1/der';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { signingFixtures } from './helpers/fixtures';
 
-const fixtures = join(__dirname, 'fixtures', 'signing');
-const certRsa = readFileSync(join(fixtures, 'cert-rsa.pem'), 'utf8');
-const keyRsa = readFileSync(join(fixtures, 'key-rsa.pem'), 'utf8');
+const { certRsa, keyRsa } = await signingFixtures();
 
 /** An in-process RFC 3161 authority that answers what it is asked. */
 let tsa: TestTsa;

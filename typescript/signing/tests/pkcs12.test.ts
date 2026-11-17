@@ -7,16 +7,9 @@ import { parsePkcs12 } from '../src/pkcs12';
 import { indexOfAscii } from '../src/pdf';
 import { readNode } from '../src/asn1/der';
 import { verifyCms } from './helpers/cms';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { signingFixtures, PFX_PASSWORD as PASSWORD } from './helpers/fixtures';
 
-const fixtures = join(__dirname, 'fixtures', 'signing');
-const pfxRsa = new Uint8Array(readFileSync(join(fixtures, 'test-rsa.pfx')));
-const pfxEc = new Uint8Array(readFileSync(join(fixtures, 'test-ec.pfx')));
-const pfxLegacy = new Uint8Array(readFileSync(join(fixtures, 'test-legacy-3des.pfx')));
-const certRsa = readFileSync(join(fixtures, 'cert-rsa.pem'), 'utf8');
-const certEc = readFileSync(join(fixtures, 'cert-ec.pem'), 'utf8');
-const PASSWORD = 'pfxpw';
+const { pfxRsa, pfxEc, pfxLegacy, certRsa, certEc } = await signingFixtures();
 
 async function makePdf(): Promise<Uint8Array> {
   const doc = new Document();

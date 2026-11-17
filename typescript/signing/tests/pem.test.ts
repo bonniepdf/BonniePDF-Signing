@@ -1,10 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { base64ToBytes, bytesToBase64, pemToDer, derToPem } from '../src/pem';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { signingFixtures } from './helpers/fixtures';
 
-const fixtures = join(__dirname, 'fixtures', 'signing');
-const keyRsa = readFileSync(join(fixtures, 'key-rsa.pem'), 'utf8');
+const { keyRsa } = await signingFixtures();
 
 describe('base64', () => {
   it('round-trips arbitrary bytes', () => {

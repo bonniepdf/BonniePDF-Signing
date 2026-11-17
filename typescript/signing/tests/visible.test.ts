@@ -6,12 +6,9 @@ import { SigningAlgorithm } from '../src/SigningAlgorithm';
 import { latin1Decode, indexOfAscii } from '../src/pdf';
 import { verifyCms } from './helpers/cms';
 import { readNode } from '../src/asn1/der';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { signingFixtures } from './helpers/fixtures';
 
-const fixtures = join(__dirname, 'fixtures', 'signing');
-const certRsa = readFileSync(join(fixtures, 'cert-rsa.pem'), 'utf8');
-const keyRsa = readFileSync(join(fixtures, 'key-rsa.pem'), 'utf8');
+const { certRsa, keyRsa } = await signingFixtures();
 
 async function makePdf(): Promise<Uint8Array> {
   const doc = new Document();
