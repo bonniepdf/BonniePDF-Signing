@@ -1,0 +1,28 @@
+name: Set up Signing TypeScript
+description: Install the pinned core source and Signing test workspace
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: bonniepdf/BonniePDF-TypeScript
+        ref: e25379db057be0b76a9ae0ea961a33045d9d01be
+        path: BonniePDF-TypeScript
+        persist-credentials: false
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 11.0.9
+        run_install: false
+    - name: Prepare the test workspace
+      shell: bash
+      env:
+        CI_FILES: ${{ github.action_path }}/../../ci
+      run: |
+        cp "$CI_FILES/package.json.template" package.json
+        cp "$CI_FILES/pnpm-workspace.yaml.template" pnpm-workspace.yaml
+        cp "$CI_FILES/pnpm-lock.yaml.template" pnpm-lock.yaml
+        pnpm install --frozen-lockfile
+        pnpm --filter @bonniepdf/core run build

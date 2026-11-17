@@ -1,0 +1,83 @@
+name: Signing CI (TypeScript)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'typescript/**'
+      - '.github/actions/setup-typescript/**'
+      - '.github/ci/**'
+      - '.github/workflows/signing-typescript-ci.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'typescript/**'
+      - '.github/actions/setup-typescript/**'
+      - '.github/ci/**'
+      - '.github/workflows/signing-typescript-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signing-ci-typescript-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test @bonniepdf/signing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: BonniePDF-Signing
+          persist-credentials: false
+      - uses: ./BonniePDF-Signing/.github/actions/setup-typescript
+      - name: Typecheck, test and build
+        run: |
+          pnpm --filter @bonniepdf/signing run typecheck
+          pnpm --filter @bonniepdf/signing run test
+          pnpm --filter @bonniepdf/signing run build
+          pnpm --filter @bonniepdf/signing run check:consumer-types
+      - name: Pack
+        run: pnpm --filter @bonniepdf/signing pack --pack-destination "$GITHUB_WORKSPACE/packages"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bonniepdf-signing-npm
+          path: packages/*.tgz
+
+  validate:
+    name: TypeScript external validation (${{ matrix.validator }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        validator: [pdfsig, dss]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: BonniePDF-Signing
+          persist-credentials: false
+      - uses: ./BonniePDF-Signing/.github/actions/setup-typescript
+      - name: Install pdfsig
+        if: matrix.validator == 'pdfsig'
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - uses: actions/setup-java@v4
+        if: matrix.validator == 'dss'
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/cache@v4
+        if: matrix.validator == 'dss'
+        with:
+          path: BonniePDF-Signing/typescript/signing/tools/dss/lib
+          key: signing-ts-dss-${{ hashFiles('BonniePDF-Signing/typescript/signing/tools/dss/pom.xml') }}
+      - name: Generate signed samples
+        run: pnpm exec tsx BonniePDF-Signing/typescript/signing/scripts/generate-signed-samples.ts signed-samples
+      - name: Validate with pdfsig
+        if: matrix.validator == 'pdfsig'
+        run: bash BonniePDF-Signing/typescript/signing/scripts/pdfsig-validate.sh signed-samples
+      - name: Validate PAdES levels with EU DSS
+        if: matrix.validator == 'dss'
+        run: bash BonniePDF-Signing/typescript/signing/tools/dss/validate.sh signed-samples

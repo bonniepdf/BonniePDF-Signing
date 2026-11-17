@@ -5,6 +5,7 @@ name: Signing CI (.NET)
 # and runs its xUnit suite before any release.
 
 on:
+  workflow_dispatch:
   push:
     branches: [master]
     paths:
@@ -38,6 +39,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: bonniepdf/BonniePDF-NET
+          ref: 6b0e5dd82474883f502e31c1a103ae99f2afa8d9
           path: BonniePDF-NET
 
       - name: Setup .NET
@@ -88,6 +90,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: bonniepdf/BonniePDF-NET
+          ref: 6b0e5dd82474883f502e31c1a103ae99f2afa8d9
           path: BonniePDF-NET
 
       - name: Setup .NET
@@ -120,6 +123,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: bonniepdf/BonniePDF-NET
+          ref: 6b0e5dd82474883f502e31c1a103ae99f2afa8d9
           path: BonniePDF-NET
 
       - name: Setup .NET

@@ -1,0 +1,5 @@
+packages:
+  - BonniePDF-TypeScript/core
+  - BonniePDF-Signing/typescript/signing
+allowBuilds:
+  esbuild: true
