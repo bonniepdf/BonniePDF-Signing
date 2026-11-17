@@ -1,11 +1,14 @@
 {
-  // Typechecks a consumer of the built package the way an application on
-  // `moduleResolution: "nodenext"` sees it. The package refers to itself by
+  // Typechecks an ES module (esm.ts) and a CommonJS (cjs.cts) consumer of the
+  // built package on Node's own module resolution. `node16` is the strict
+  // setting: unlike `nodenext` on TypeScript 5.8 and later, it does not let
+  // CommonJS require an ES module, so it catches a `require` condition that
+  // points at ES module declarations. The package refers to itself by
   // name, so this resolves through `exports` to dist/, as an installed copy
   // would. Run after `pnpm build`; `prepublishOnly` runs it before a publish.
   "compilerOptions": {
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
+    "module": "node16",
+    "moduleResolution": "node16",
     "target": "es2022",
     "lib": ["es2022", "dom", "dom.iterable"],
     "strict": true,
@@ -13,5 +16,5 @@
     "skipLibCheck": false,
     "types": ["node"]
   },
-  "files": ["esm.ts"]
+  "files": ["esm.ts", "cjs.cts"]
 }
