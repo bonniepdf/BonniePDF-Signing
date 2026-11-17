@@ -174,11 +174,10 @@ export function normalizeSettings(
     }
   }
   const level = settings.padesLevel ?? 'none';
+  // b-lta is among these, so it always has a timestampUrl to fall back on for
+  // its document timestamp when documentTimestampUrl is not set.
   if (TIMESTAMPED_LEVELS.has(level) && !settings.timestampUrl) {
     throw new Error(`padesLevel '${level}' requires a timestampUrl`);
-  }
-  if (level === 'b-lta' && !settings.timestampUrl && !settings.documentTimestampUrl) {
-    throw new Error("padesLevel 'b-lta' requires a timestampUrl or documentTimestampUrl");
   }
   return {
     ...settings,

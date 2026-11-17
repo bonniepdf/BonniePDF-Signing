@@ -182,13 +182,11 @@ public sealed class SignatureSettings
             throw new ArgumentException(
                 "Provide either CertificatePem + PrivateKeyPem, or a Pkcs12 blob.");
         }
+        // B-LTA is among these, so it always has a TimestampUrl to fall back on
+        // for its document timestamp when DocumentTimestampUrl is not set.
         if (NeedsTimestampAuthority && string.IsNullOrEmpty(TimestampUrl))
         {
             throw new ArgumentException($"PadesLevel.{PadesLevel} requires a TimestampUrl.");
-        }
-        if (PadesLevel == Level.BLTA && string.IsNullOrEmpty(TimestampUrl) && string.IsNullOrEmpty(DocumentTimestampUrl))
-        {
-            throw new ArgumentException("PadesLevel.BLTA requires a TimestampUrl or DocumentTimestampUrl.");
         }
     }
 }

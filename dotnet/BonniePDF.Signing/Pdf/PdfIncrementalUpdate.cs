@@ -42,8 +42,13 @@ internal static class PdfIncrementalUpdate
         return -1;
     }
 
+    /// <summary>
+    /// Escape a string for a PDF literal string. Only printable ASCII reaches
+    /// here (see <see cref="PdfTextString"/>), so the delimiters and the
+    /// backslash are all there is to escape.
+    /// </summary>
     private static string EscapeLiteral(string text) =>
-        text.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)").Replace("\r", "\\r").Replace("\n", "\\n");
+        text.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
 
     /// <summary>Render a value as a PDF text string: literal for ASCII, UTF-16BE hex otherwise.</summary>
     public static string PdfTextString(string text)

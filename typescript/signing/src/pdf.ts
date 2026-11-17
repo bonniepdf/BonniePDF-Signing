@@ -42,14 +42,13 @@ export function indexOfAscii(haystack: Uint8Array, needle: string, from = 0): nu
   return -1;
 }
 
-/** Escape a string for a PDF literal `( ... )` string. */
+/**
+ * Escape a string for a PDF literal `( ... )` string. Only printable ASCII
+ * reaches here (see pdfTextString), so the delimiters and the backslash are all
+ * there is to escape.
+ */
 function escapeLiteral(text: string): string {
-  return text
-    .replace(/\\/g, '\\\\')
-    .replace(/\(/g, '\\(')
-    .replace(/\)/g, '\\)')
-    .replace(/\r/g, '\\r')
-    .replace(/\n/g, '\\n');
+  return text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
 
 /** Render a value as a PDF text string: literal for ASCII, UTF-16BE hex otherwise. */
