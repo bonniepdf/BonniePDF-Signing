@@ -213,7 +213,7 @@ internal static class ValidationMaterialCollector
                     await OcspClient.RequestAsync(url, subject, issuer, httpClient, ct).ConfigureAwait(false));
                 return;
             }
-            catch (Exception e) when (IsCollectionFailure(e))
+            catch (Exception e) when (IsCollectionFailure(e, ct))
             {
                 material.Problems.Add($"certificate {index}: OCSP at {url} failed - {e.Message}");
             }
@@ -244,7 +244,7 @@ internal static class ValidationMaterialCollector
                 material.Crls.Add(await CrlClient.FetchAsync(url, httpClient, ct).ConfigureAwait(false));
                 return;
             }
-            catch (Exception e) when (IsCollectionFailure(e))
+            catch (Exception e) when (IsCollectionFailure(e, ct))
             {
                 material.Problems.Add($"certificate {index}: CRL at {url} failed - {e.Message}");
             }
@@ -273,7 +273,7 @@ internal static class ValidationMaterialCollector
                     ct).ConfigureAwait(false);
                 if (body.Length > 0 && body[0] == 0x30) return body;
             }
-            catch (Exception e) when (IsCollectionFailure(e))
+            catch (Exception e) when (IsCollectionFailure(e, ct))
             {
                 // Try the next URL; a partial failure here tells the caller nothing useful.
             }
@@ -285,15 +285,17 @@ internal static class ValidationMaterialCollector
     /// Failures that mean "this evidence could not be gathered".
     /// </summary>
     /// <remarks>
-    /// Deliberately narrow. Cancellation is excluded first and by name, because
-    /// <see cref="TaskCanceledException"/> derives from
-    /// <see cref="OperationCanceledException"/> and swallowing it here would turn
-    /// "the caller asked us to stop" into "the responder was unreachable", and
-    /// let signing carry on after a cancellation.
+    /// Deliberately narrow. A cancellation is a failure to collect only when the
+    /// caller did not ask for it: <see cref="HttpClient"/> reports its own
+    /// timeout as a <see cref="TaskCanceledException"/>, and a responder that
+    /// never answers is exactly the kind of failure collection records rather
+    /// than throws. When <paramref name="ct"/> has been cancelled it is the caller
+    /// asking us to stop, and swallowing that would let signing carry on after a
+    /// cancellation.
     /// </remarks>
-    private static bool IsCollectionFailure(Exception e)
+    private static bool IsCollectionFailure(Exception e, CancellationToken ct)
     {
-        if (e is OperationCanceledException) return false;
+        if (e is OperationCanceledException) return !ct.IsCancellationRequested;
         return e is HttpRequestException or CryptographicException or InvalidOperationException or FormatException;
     }
 }

@@ -234,6 +234,38 @@ public sealed class LtvTests : IDisposable
     }
 
     [Fact]
+    public async Task Collection_RecordsAResponderTimeoutAsAProblem()
+    {
+        // HttpClient reports its own timeout as a TaskCanceledException. A
+        // responder that never answers is a gap in the evidence, not a reason to
+        // abandon the signature.
+        SigningHttpClient timesOut = (_, _) =>
+            throw new TaskCanceledException("timed out", new TimeoutException());
+
+        ValidationMaterial material = await ValidationMaterialCollector.CollectAsync(
+            _signer.CertDer, [_ca.CertDer], timesOut, null, true, CancellationToken.None);
+
+        Assert.Empty(material.OcspResponses);
+        Assert.Empty(material.Crls);
+        Assert.True(material.Problems.Count >= 2);
+    }
+
+    [Fact]
+    public async Task Collection_StillStopsWhenTheCallerCancels()
+    {
+        using var cts = new CancellationTokenSource();
+        SigningHttpClient cancels = (_, ct) =>
+        {
+            cts.Cancel();
+            ct.ThrowIfCancellationRequested();
+            return Task.FromResult(new SigningHttpResponse());
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ValidationMaterialCollector.CollectAsync(
+            _signer.CertDer, [_ca.CertDer], cancels, null, true, cts.Token));
+    }
+
+    [Fact]
     public async Task Collection_FetchesNothingWhenRevocationCollectionIsOff()
     {
         int before = _ocsp.Requests;
