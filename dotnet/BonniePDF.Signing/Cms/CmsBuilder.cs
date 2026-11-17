@@ -35,9 +35,19 @@ internal static class CmsBuilder
         public byte[] TimestampToken { get; init; }
     }
 
+    /// <param name="signedContent">The signed byte range of the document.</param>
+    /// <param name="cert">The signer certificate, with its private key.</param>
+    /// <param name="chain">Further certificates to carry in the envelope.</param>
+    /// <param name="settings">Algorithm, PAdES level and timestamp settings.</param>
+    /// <param name="signingTime">
+    /// The signing time the caller has already written into the signature
+    /// dictionary's <c>/M</c>. Passed in rather than read from the clock here,
+    /// so the CMS signing-time attribute cannot disagree with it.
+    /// </param>
+    /// <param name="ct">Cancels the timestamp request.</param>
     public static async Task<CmsResult> BuildAsync(
         byte[] signedContent, X509Certificate2 cert, IReadOnlyList<X509Certificate2> chain,
-        SignatureSettings settings, CancellationToken ct)
+        SignatureSettings settings, DateTimeOffset signingTime, CancellationToken ct)
     {
         var contentInfo = new ContentInfo(new Oid(DataContentTypeOid), signedContent);
         var signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, cert)
@@ -57,8 +67,7 @@ internal static class CmsBuilder
         // baseline profile for it.
         if (!settings.IsPades)
         {
-            DateTime signingTime = (settings.SigningTime ?? DateTimeOffset.UtcNow).UtcDateTime;
-            signer.SignedAttributes.Add(new Pkcs9SigningTime(signingTime));
+            signer.SignedAttributes.Add(new Pkcs9SigningTime(signingTime.UtcDateTime));
         }
         else
         {

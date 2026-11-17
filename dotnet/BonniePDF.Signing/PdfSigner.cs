@@ -86,7 +86,7 @@ public static class PdfSigner
             PdfIncrementalUpdate.ByteRangeResult br = PdfIncrementalUpdate.PatchByteRange(withPlaceholders);
 
             // 3. Build the detached CMS envelope (with optional timestamp).
-            CmsBuilder.CmsResult cms = await CmsBuilder.BuildAsync(br.Signed, cert, chain, settings, ct).ConfigureAwait(false);
+            CmsBuilder.CmsResult cms = await CmsBuilder.BuildAsync(br.Signed, cert, chain, settings, signingTime, ct).ConfigureAwait(false);
 
             // 4. Inject the CMS into /Contents.
             PdfIncrementalUpdate.InjectContents(withPlaceholders, br.ContentsStart, br.ContentsEnd, cms.Cms);
