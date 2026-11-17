@@ -8,7 +8,15 @@ import { buildSignedData } from './cms';
 import { requestTimestamp } from './timestamp';
 import { parsePkcs12 } from './pkcs12';
 import { buildAppearanceStream } from './appearance';
-import { parsePdf, buildIncrementalUpdate, patchByteRange, injectContents, pdfDate, VisibleSignature } from './pdf';
+import {
+  parsePdf,
+  buildIncrementalUpdate,
+  patchByteRange,
+  injectContents,
+  hexDecode,
+  pdfDate,
+  VisibleSignature,
+} from './pdf';
 import { defaultHttpClient } from './http';
 import { buildDssRevision, needsEsicExtension } from './dss';
 import { appendDocumentTimestamp } from './docTimestamp';
@@ -124,9 +132,10 @@ export async function signPdf(pdfBytes: Uint8Array, settings: SignatureSettings)
 
   let out = await buildDssRevision(withPlaceholders, {
     material,
-    // The /VRI key names the signature by the bytes of its /Contents entry,
-    // padding included - which is exactly the span we just wrote into.
-    signatureContents: withPlaceholders.slice(contentsStart + 1, contentsEnd - 1),
+    // The /VRI key names the signature by the value of its /Contents string -
+    // the decoded bytes, zero padding included - which is exactly the span we
+    // just wrote into.
+    signatureContents: hexDecode(withPlaceholders.subarray(contentsStart + 1, contentsEnd - 1)),
     time: signingTime,
     declareEsicExtension: needsEsicExtension(pdfBytes),
   });

@@ -23,13 +23,15 @@ namespace BonniePDF.Signing.Pdf;
 internal static class DssBuilder
 {
     /// <summary>
-    /// The /VRI key for a signature: the uppercase base-16 SHA-1 of the bytes of
-    /// its /Contents entry (ETSI EN 319 142-1 §5.4.2).
+    /// The /VRI key for a signature: the uppercase base-16 SHA-1 of its
+    /// /Contents value (ETSI EN 319 142-1 §5.4.2).
     /// </summary>
     /// <remarks>
-    /// The hash covers the /Contents octet string as written, padding included -
-    /// that string is what the key names, and a validator recomputes it from the
-    /// file in front of it rather than from the CMS it parsed out.
+    /// The value of a hex string is the bytes its digits denote, so the hash
+    /// covers the decoded octet string, zero padding included - not the hex
+    /// digits as they appear in the file. A validator recomputes the key from the
+    /// string it reads, not from the CMS it parses out of it, which is why the
+    /// padding counts.
     /// </remarks>
     public static string VriKey(byte[] signatureContents) =>
         Convert.ToHexString(SHA1.HashData(signatureContents));

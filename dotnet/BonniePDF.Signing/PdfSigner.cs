@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BonniePDF.Signing.Cms;
@@ -103,10 +104,11 @@ public static class PdfSigner
                 settings.FetchRevocation, cms.TimestampToken, ct).ConfigureAwait(false);
             settings.OnValidationMaterial?.Invoke(material);
 
-            // The /VRI key names the signature by the bytes of its /Contents
-            // entry, padding included - which is exactly the span just written.
-            var contents = new byte[br.ContentsEnd - br.ContentsStart - 2];
-            Buffer.BlockCopy(withPlaceholders, br.ContentsStart + 1, contents, 0, contents.Length);
+            // The /VRI key names the signature by the value of its /Contents
+            // string - the decoded bytes, zero padding included - which is
+            // exactly the span just written.
+            byte[] contents = Convert.FromHexString(Encoding.Latin1.GetString(
+                withPlaceholders, br.ContentsStart + 1, br.ContentsEnd - br.ContentsStart - 2));
 
             byte[] result = DssBuilder.Append(
                 withPlaceholders, material, contents, signingTime,

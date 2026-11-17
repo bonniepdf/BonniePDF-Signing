@@ -3,7 +3,7 @@ import { Document, TextBlock, StandardFonts } from '@bonniepdf/core';
 import { signPdf } from '../src/signPdf';
 import { SigningAlgorithm } from '../src/SigningAlgorithm';
 import { latin1Decode, indexOfAscii, readObjectBody, readOptionalRef } from '../src/pdf';
-import { vriKey, needsEsicExtension, pdfHeaderVersion } from '../src/dss';
+import { needsEsicExtension, pdfHeaderVersion } from '../src/dss';
 import { collectValidationMaterial } from '../src/validation';
 import { buildOcspRequest, checkOcspResponse } from '../src/ocsp';
 import { normalizeCrl } from '../src/crl';
@@ -278,11 +278,17 @@ describe('PAdES B-LT', () => {
     expect(dss).toMatch(/\/VRI\s+\d+\s+0\s+R/);
   });
 
-  it('keys the VRI entry by the SHA-1 of the signature Contents', async () => {
+  it('keys the VRI entry by the SHA-1 of the decoded signature Contents', async () => {
+    // A hex string's value is the bytes its digits denote, padding included, and
+    // that is what a validator hashes to find the entry - not the digits.
     const tag = indexOfAscii(signed, '/Contents <');
     const open = indexOfAscii(signed, '<', tag);
     const close = indexOfAscii(signed, '>', open);
-    const expected = await vriKey(signed.slice(open + 1, close));
+    const hex = latin1Decode(signed.slice(open + 1, close));
+    const value = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < value.length; i++) value[i] = parseInt(hex.slice(2 * i, 2 * i + 2), 16);
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-1', value));
+    const expected = [...digest].map(b => b.toString(16).padStart(2, '0').toUpperCase()).join('');
 
     const dssId = readOptionalRef(catalogBody(signed), '/DSS')!;
     const vriId = readOptionalRef(readObjectBody(signed, dssId), '/VRI')!;

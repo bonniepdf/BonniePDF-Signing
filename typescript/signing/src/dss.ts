@@ -18,8 +18,9 @@ export interface DssOptions {
   /** The blobs to store. Empty categories are omitted from the dictionary. */
   material: ValidationMaterial;
   /**
-   * Raw bytes of the signature's `/Contents` entry, used to key the `/VRI`
-   * entry. Omit to write a document-level DSS with no per-signature index.
+   * The value of the signature's `/Contents` string - its decoded bytes, zero
+   * padding included - used to key the `/VRI` entry. Omit to write a
+   * document-level DSS with no per-signature index.
    */
   signatureContents?: Uint8Array;
   /** Time recorded in the `/VRI` `/TU` entry. Defaults to now. */
@@ -32,12 +33,13 @@ export interface DssOptions {
 }
 
 /**
- * The `/VRI` key for a signature: the uppercase base-16 SHA-1 of the bytes of
- * its `/Contents` entry (ETSI EN 319 142-1 §5.4.2).
+ * The `/VRI` key for a signature: the uppercase base-16 SHA-1 of its
+ * `/Contents` value (ETSI EN 319 142-1 §5.4.2).
  *
- * The hash covers the `/Contents` octet string as written, padding included -
- * that string is what the key names, and a validator recomputes it from the file
- * in front of it rather than from the CMS it parsed out.
+ * The value of a hex string is the bytes its digits denote, so the hash covers
+ * the decoded octet string, zero padding included - not the hex digits as they
+ * appear in the file. A validator recomputes the key from the string it reads,
+ * not from the CMS it parses out of it, which is why the padding counts.
  */
 export async function vriKey(signatureContents: Uint8Array): Promise<string> {
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-1', signatureContents as BufferSource));

@@ -446,6 +446,18 @@ export function injectContents(bytes: Uint8Array, contentsStart: number, content
   // Remaining placeholder zeros stay as '0' padding up to the '>'.
 }
 
+/**
+ * Decode the ASCII hex digits of a PDF hex string (without its `<` `>`) to the
+ * bytes it denotes. A hex string's value is these bytes, not its digits.
+ */
+export function hexDecode(hex: Uint8Array): Uint8Array {
+  const out = new Uint8Array(hex.length >> 1);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parseInt(String.fromCharCode(hex[2 * i], hex[2 * i + 1]), 16);
+  }
+  return out;
+}
+
 function hexCharCode(nibble: number): number {
   return nibble < 10 ? 48 + nibble : 65 + (nibble - 10); // '0'-'9', 'A'-'F'
 }

@@ -287,14 +287,17 @@ public sealed class LtvTests : IDisposable
     }
 
     [Fact]
-    public async Task Blt_KeysTheVriEntryByTheSha1OfTheSignatureContents()
+    public async Task Blt_KeysTheVriEntryByTheSha1OfTheDecodedSignatureContents()
     {
         byte[] signed = await SignAsync(PadesLevel.BLT);
 
+        // A hex string's value is the bytes its digits denote, padding included,
+        // and that is what a validator hashes to find the entry - not the digits.
         int tag = PdfIncrementalUpdate.IndexOfAscii(signed, "/Contents <");
         int open = PdfIncrementalUpdate.IndexOfAscii(signed, "<", tag);
         int close = PdfIncrementalUpdate.IndexOfAscii(signed, ">", open);
-        string expected = DssBuilder.VriKey(signed[(open + 1)..close]);
+        byte[] value = Convert.FromHexString(Encoding.Latin1.GetString(signed[(open + 1)..close]));
+        string expected = Convert.ToHexString(SHA1.HashData(value));
 
         int dssId = PdfIncrementalUpdate.ReadOptionalRef(CatalogBody(signed), "/DSS")!.Value;
         int vriId = PdfIncrementalUpdate.ReadOptionalRef(
