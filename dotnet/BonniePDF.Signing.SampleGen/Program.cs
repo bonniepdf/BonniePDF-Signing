@@ -16,6 +16,9 @@ using BonniePDF.Signing.TestSupport;
 //
 // Usage:  dotnet run --project BonniePDF.Signing.SampleGen -- [outDir]
 
+// Sample generation is non-production evaluation of the core library.
+BonniePdfLicense.Tier = LicenseTier.Evaluation;
+
 string outDir = args.Length > 0 ? args[0] : "signed-samples";
 Directory.CreateDirectory(outDir);
 
