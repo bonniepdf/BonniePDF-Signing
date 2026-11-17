@@ -35,7 +35,6 @@ finished bytes - the original document is left byte-for-byte intact.
 
 ```csharp
 using BonniePDF;
-using BonniePDF.Elements.Text;
 using BonniePDF.Signing;
 
 // 1. Generate a PDF with BonniePDF as usual.

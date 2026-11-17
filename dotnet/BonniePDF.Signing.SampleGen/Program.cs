@@ -3,7 +3,6 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using BonniePDF;
-using BonniePDF.Elements.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BonniePDF.Signing;

@@ -10,7 +10,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using BonniePDF;
-using BonniePDF.Elements.Text;
 using BonniePDF.Signing;
 using BonniePDF.Signing.Asn1;
 using BonniePDF.Signing.Http;
