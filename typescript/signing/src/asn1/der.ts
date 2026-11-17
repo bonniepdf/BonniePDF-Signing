@@ -145,11 +145,6 @@ export function utf8String(text: string): Uint8Array {
   return tlv(Tag.UTF8_STRING, new TextEncoder().encode(text));
 }
 
-/** IA5String (ASCII). */
-export function ia5String(text: string): Uint8Array {
-  return tlv(Tag.IA5_STRING, new TextEncoder().encode(text));
-}
-
 /**
  * UTCTime in the `YYMMDDHHMMSSZ` form CMS uses for signing time
  * (valid for years 1950-2049, which covers all realistic signing dates).
@@ -190,11 +185,6 @@ export function boolean(value: boolean): Uint8Array {
 /** Context-specific constructed `[n]` wrapper (e.g. `[0]` IMPLICIT certificates). */
 export function contextConstructed(n: number, value: Uint8Array): Uint8Array {
   return tlv(0xa0 | n, value);
-}
-
-/** Pass an already-DER-encoded blob through unchanged. */
-export function raw(bytes: Uint8Array): Uint8Array {
-  return bytes;
 }
 
 // ───────────────────────────── reader ──────────────────────────────────────

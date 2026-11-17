@@ -35,7 +35,4 @@ internal static class SigningAlgorithmInfo
         SigningAlgorithm.Sha512Rsa => "2.16.840.1.101.3.4.2.3",
         _ => throw new ArgumentOutOfRangeException(nameof(algorithm)),
     };
-
-    public static bool IsEcdsa(SigningAlgorithm algorithm) =>
-        algorithm is SigningAlgorithm.Sha256Ecdsa or SigningAlgorithm.Sha384Ecdsa;
 }

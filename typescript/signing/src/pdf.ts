@@ -81,8 +81,6 @@ export interface PdfInfo {
   targetPageId: number;
   /** Raw text of the target page object's dictionary body. */
   targetPageBody: string;
-  /** All page object numbers, in `/Kids` order. */
-  pageIds: number[];
   /** Highest object number currently in use (= trailer `/Size` - 1). */
   size: number;
   /** Verbatim trailer `/ID [<..> <..>]` value, or undefined if absent. */
@@ -192,17 +190,10 @@ export function parsePdf(bytes: Uint8Array, pageIndex = 0): PdfInfo {
     catalogBody,
     targetPageId,
     targetPageBody,
-    pageIds,
     size: size - 1,
     idArray: idMatch?.[1],
     prevStartxref,
   };
-}
-
-/** A built incremental update: the bytes to append and the layout to back-patch. */
-export interface IncrementalUpdate {
-  /** Original document bytes followed by the appended revision. */
-  bytes: Uint8Array;
 }
 
 /** Metadata embedded in the `/Sig` dictionary. */

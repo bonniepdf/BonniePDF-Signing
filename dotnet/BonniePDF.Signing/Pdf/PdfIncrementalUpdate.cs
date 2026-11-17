@@ -71,7 +71,6 @@ internal static class PdfIncrementalUpdate
         public string CatalogBody;
         public int TargetPageId;
         public string TargetPageBody;
-        public List<int> PageIds;
         public int Size;
         public string IdArray;
         public long PrevStartxref;
@@ -169,7 +168,6 @@ internal static class PdfIncrementalUpdate
             CatalogBody = catalogBody,
             TargetPageId = targetPageId,
             TargetPageBody = targetPageBody,
-            PageIds = pageIds,
             Size = size - 1,
             IdArray = idMatch.Success ? idMatch.Groups[1].Value : null,
             PrevStartxref = prevStartxref,
