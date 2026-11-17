@@ -1,0 +1,136 @@
+name: Publish Signing packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag, for example v2026.11.12
+        required: true
+        type: string
+      registry:
+        description: Package registry
+        required: true
+        default: both
+        type: choice
+        options: [both, nuget, npm]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signing-publish-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    outputs:
+      dotnet_run: ${{ steps.check.outputs.dotnet_run }}
+      typescript_run: ${{ steps.check.outputs.typescript_run }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require both runtimes and all external validators to pass
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]{4}\.[0-9]{1,2}\.[0-9]+$ ]] || exit 1
+          sha=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
+          git merge-base --is-ancestor "$sha" HEAD
+          for entry in dotnet:signing-ci.yml typescript:signing-typescript-ci.yml; do
+            name="${entry%%:*}"
+            workflow="${entry#*:}"
+            run=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?head_sha=$sha&status=success&per_page=100" --jq '.workflow_runs | map(select(.event == "push" or .event == "workflow_dispatch")) | first | .id // empty')
+            if [[ -z "$run" ]]; then
+              echo "::error::$workflow must succeed for the tagged commit, including external validators."
+              exit 1
+            fi
+            echo "${name}_run=$run" >> "$GITHUB_OUTPUT"
+          done
+          echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+
+  nuget:
+    needs: checks
+    if: inputs.registry == 'both' || inputs.registry == 'nuget'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: bonniepdf-signing-nupkg
+          path: packages
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.checks.outputs.dotnet_run }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Verify the package version
+        env:
+          VERSION: ${{ needs.checks.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os, pathlib, zipfile, xml.etree.ElementTree as ET
+          packages = list(pathlib.Path("packages").glob("*.nupkg"))
+          assert len(packages) == 1, "Expected one NuGet package"
+          with zipfile.ZipFile(packages[0]) as z:
+              spec = ET.fromstring(z.read(next(n for n in z.namelist() if n.endswith(".nuspec"))))
+              metadata = next(e for e in spec if e.tag.endswith("metadata"))
+              values = {e.tag.rsplit("}", 1)[-1]: e.text for e in metadata}
+              assert values["id"] == "BonniePDF.Signing"
+              assert values["version"] == os.environ["VERSION"]
+          PY
+      - uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ vars.NUGET_USER }}
+      - name: Publish NuGet package
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: dotnet nuget push packages/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+  npm:
+    needs: checks
+    if: inputs.registry == 'both' || inputs.registry == 'npm'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: bonniepdf-signing-npm
+          path: packages
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.checks.outputs.typescript_run }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Set up npm trusted publishing
+        run: npm install --global npm@12.2.2
+      - name: Verify the package version
+        env:
+          VERSION: ${{ needs.checks.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os, pathlib, tarfile, json
+          packages = list(pathlib.Path("packages").glob("*.tgz"))
+          assert len(packages) == 1, "Expected one npm tarball"
+          with tarfile.open(packages[0]) as tar:
+              data = json.load(tar.extractfile("package/package.json"))
+              assert data["name"] == "@bonniepdf/signing"
+              assert data["version"] == os.environ["VERSION"]
+          PY
+      - name: Publish npm package
+        run: npm publish packages/*.tgz --access public --provenance
