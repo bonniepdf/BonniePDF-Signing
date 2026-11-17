@@ -15,7 +15,6 @@
 import {
   appendRevision,
   injectContents,
-  latin1Encode,
   parsePdf,
   patchByteRange,
   readObjectBody,
@@ -122,6 +121,3 @@ function withAnnot(pageBody: string, widgetId: number): string {
   }
   return `\n  /Annots [${ref}]\n${pageBody.replace(/^\n/, '')}`;
 }
-
-/** Re-exported so the tests can assemble expectations without a second import. */
-export { latin1Encode };

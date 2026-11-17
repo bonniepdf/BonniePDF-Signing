@@ -1,7 +1,9 @@
 /**
- * @bonniepdf/signing - invisible PKCS#7 / CMS digital signatures for
- * BonniePDF-generated PDFs. Zero runtime dependencies; all crypto runs on the
- * Web Crypto API, so the same code works in the browser, Node, Bun, and Deno.
+ * @bonniepdf/signing - digital signatures for BonniePDF-generated PDFs:
+ * invisible and visible CMS signatures, the PAdES baseline levels B-B through
+ * B-LTA, RFC 3161 timestamps, and PKCS#12 input. Zero runtime dependencies; all
+ * crypto runs on the Web Crypto API, so the same code works in the browser,
+ * Node, Bun, and Deno.
  *
  * Commercial add-on: requires a paid BonniePDF licence. Not part of the free
  * `@bonniepdf/core`.
@@ -26,8 +28,6 @@ export type { DocumentTimestampOptions } from './docTimestamp';
 export { requestOcsp, buildOcspRequest, checkOcspResponse } from './ocsp';
 export { fetchCrl } from './crl';
 export { ocspUrls, crlUrls, caIssuerUrls, readExtensions } from './asn1/extensions';
-
-// Licence verification (offline; commercial add-on).
 
 // Lower-level building blocks, exported for advanced use and testing.
 export { pemToDer, derToPem, base64ToBytes, bytesToBase64 } from './pem';

@@ -130,7 +130,10 @@ export interface SignatureSettings {
    * a trusted timestamp to a legacy signature.
    */
   timestampUrl?: string;
-  /** Optional HTTP transport for timestamping (defaults to global `fetch`). */
+  /**
+   * Optional HTTP transport for every network call this package makes -
+   * timestamping, OCSP and CRL retrieval (defaults to global `fetch`).
+   */
   httpClient?: HttpClient;
   /**
    * When set, produces a **visible** signature: the widget gets this rectangle

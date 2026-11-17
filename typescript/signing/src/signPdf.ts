@@ -26,8 +26,8 @@ import { collectValidationMaterial } from './validation';
  * Embed a digital signature into a PDF produced by `@bonniepdf/core`, applied as
  * a minimal incremental update.
  *
- * Supports invisible and **visible** signatures, **PAdES** baseline profiles
- * (`b-b` / `b-t`), and **RFC 3161** timestamps. Signing is asynchronous because
+ * Supports invisible and **visible** signatures, the **PAdES** baseline levels
+ * (`b-b`, `b-t`, `b-lt`, `b-lta`), and **RFC 3161** timestamps. Signing is asynchronous because
  * all cryptography runs on the Web Crypto API.
  *
  * @param pdfBytes The finished PDF from `Document.generateBytesAsync()`.

@@ -1,7 +1,7 @@
 {
   "name": "@bonniepdf/signing",
   "version": "2026.7.2",
-  "description": "Digital signatures for BonniePDF. Embeds an invisible PKCS#7 / CMS signature (RSA or ECDSA) into a BonniePDF-generated PDF via a minimal incremental update. Zero runtime dependencies - all crypto runs on the Web Crypto API.",
+  "description": "Digital signatures for BonniePDF. Embeds invisible or visible CMS signatures (RSA or ECDSA), the PAdES baseline levels B-B through B-LTA and RFC 3161 timestamps into a BonniePDF-generated PDF via minimal incremental updates. Zero runtime dependencies - all crypto runs on the Web Crypto API.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

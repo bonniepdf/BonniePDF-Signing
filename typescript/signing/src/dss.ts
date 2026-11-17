@@ -10,7 +10,7 @@
  *
  * See ETSI EN 319 142-1 §5.4 and ISO 32000-2 §12.8.4.3.
  */
-import { appendRevision, latin1Decode, latin1Encode, parsePdf, PdfInfo, RevisionObject, pdfDate } from './pdf';
+import { appendRevision, latin1Decode, parsePdf, PdfInfo, RevisionObject, pdfDate } from './pdf';
 import { ValidationMaterial } from './validation';
 
 /** What `buildDssRevision` needs beyond the document itself. */
@@ -134,6 +134,3 @@ export function needsEsicExtension(bytes: Uint8Array): boolean {
   if (!version) return true;
   return parseFloat(version) < 2;
 }
-
-/** Re-encode a latin-1 string to bytes. Re-exported for the tests' convenience. */
-export { latin1Encode };
