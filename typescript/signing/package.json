@@ -44,8 +44,12 @@
     "digital-signature",
     "pkcs7",
     "cms",
+    "pades",
+    "rfc3161",
+    "timestamp",
     "rsa",
     "ecdsa",
+    "typescript",
     "bonniepdf",
     "zero-dependency"
   ],
@@ -56,7 +60,10 @@
     "url": "git+https://github.com/bonniepdf/BonniePDF-Signing.git",
     "directory": "typescript/signing"
   },
-  "homepage": "https://bonniepdf.dev",
+  "bugs": {
+    "url": "https://github.com/bonniepdf/BonniePDF-Signing/issues"
+  },
+  "homepage": "https://www.bonniepdf.dev/features/typescript/signing",
   "publishConfig": {
     "access": "public"
   },

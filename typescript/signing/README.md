@@ -1,10 +1,12 @@
 # @bonniepdf/signing
 
-Digital signatures for [BonniePDF](https://bonniepdf.dev).
+[Documentation](https://www.bonniepdf.dev/features/typescript/signing) · [@bonniepdf/core on npm](https://www.npmjs.com/package/@bonniepdf/core) · [.NET package](https://www.nuget.org/packages/BonniePDF.Signing) · [Pricing & Licensing](https://www.bonniepdf.dev/pricing)
+
+Digital signatures for [BonniePDF](https://www.bonniepdf.dev).
 
 Embeds a PKCS#7 / CMS digital signature into a PDF produced by
 `@bonniepdf/core` — **invisible or visible**, with **PAdES** baseline profiles
-(`b-b` / `b-t`) and **RFC 3161** timestamps. RSA and ECDSA are supported. There
+(`b-b` through `b-lta`) and **RFC 3161** timestamps. RSA and ECDSA are supported. There
 are **zero runtime dependencies** - every cryptographic operation runs on the
 [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
 (`crypto.subtle`), so the same code runs in the browser, Node.js 18+, Bun, Deno,
@@ -20,7 +22,7 @@ and serverless runtimes.
 > unlimited developers and signing operations. There is no licence key, activation, or telemetry: the
 > package behaves identically whether or not you hold a licence, and
 > compliance is contractual rather than enforced in code. See
-> **[LICENSING.md](LICENSING.md)** for the entitlement model.
+> **[LICENSING.md](https://github.com/bonniepdf/BonniePDF-Signing/blob/master/typescript/signing/LICENSING.md)** for the entitlement model.
 
 ## Scope
 
@@ -76,7 +78,7 @@ const signed = await signPdf(
 ```
 
 A runnable end-to-end example lives in
-[`examples/sign-document.ts`](examples/sign-document.ts):
+[`examples/sign-document.ts`](https://github.com/bonniepdf/BonniePDF-Signing/blob/master/typescript/signing/examples/sign-document.ts):
 
 ```sh
 tsx examples/sign-document.ts <cert.pem> <key-pkcs8.pem> [out.pdf]
@@ -149,17 +151,13 @@ Crypto has no 3DES/RC2). Re-export such files with AES
 (`openssl pkcs12 -export -keypbe AES-256-CBC -certpbe AES-256-CBC -macalg sha256 …`)
 or supply PEM instead.
 
-## Limitations
+## Scope and notes
 
-- **No LTV / PAdES-LTA.** B-B and B-T are supported; long-term validation
-  (embedded OCSP/CRL in a DSS) and document timestamps are not yet implemented.
-- **No certificate validation.** The certificate is embedded as supplied;
-  expiry / chain / revocation checking is the PDF reader's responsibility.
+- **PAdES `b-b` through `b-lta`:** Supports baseline signatures (`b-b`), signature timestamps (`b-t`), embedded validation material in a Document Security Store (`b-lt`), and archive document timestamps (`b-lta`).
+- **No certificate trust judgement:** The certificate and validation material are embedded as supplied; chain trust and legal effect are determined by the relying party and PDF reader.
 - **PKCS#12: modern PBES2 (AES) only** — see [Certificate input](#certificate-input).
-- **Single signature.** One signature per call.
-- **Visible appearance is text-only.** Image appearances are not yet supported.
-
-See the internal PDF-signing roadmap for the planned LTV / multiple-signature work.
+- **Single signature per call:** Each `signPdf` call appends one incremental signature revision.
+- **Text signature appearance:** Visible signature widgets render structured text lines.
 
 The package embeds certificates and signature material supplied by the user. It
 does not validate identity, certificate trust, or legal effect, and does not by
