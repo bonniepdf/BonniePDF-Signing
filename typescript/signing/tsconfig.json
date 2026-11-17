@@ -5,6 +5,7 @@
     "lib": ["ES2022", "DOM"],
     "types": ["node"],
     "moduleResolution": "bundler",
+    "rootDir": "src",
     "strict": false,
     "skipLibCheck": true,
     "noEmit": true,
