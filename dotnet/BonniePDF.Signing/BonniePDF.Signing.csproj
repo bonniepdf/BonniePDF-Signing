@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -34,9 +34,11 @@
   <ItemGroup>
     <!-- CMS (SignedCms/CmsSigner/Pkcs9SigningTime) and RFC 3161
          (Rfc3161TimestampRequest/Token) live in this Microsoft BCL assembly,
-         which is not in the default net8.0 compile reference set. Not a
-         third-party dependency. -->
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.1" />
+         which is not in the default compile reference set on either target. Not a
+         third-party dependency. Each target takes the servicing line that matches its
+         runtime, so net8.0 consumers are not pulled onto 10.x BCL packages. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.1" Condition="'$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.12" Condition="'$(TargetFramework)' == 'net10.0'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -49,7 +51,7 @@
   <!--
     No third-party package references. CMS (System.Security.Cryptography.Pkcs),
     RFC 3161 (System.Security.Cryptography), and DER (System.Formats.Asn1) are
-    all part of the .NET 8 platform. The signer operates on byte[] output, so it
+    all part of the .NET platform (8 and 10). The signer operates on byte[] output, so it
     has no project reference to BonniePDF core either - it is fully decoupled.
   -->
 

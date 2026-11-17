@@ -128,9 +128,9 @@ static async Task WritePadesSamplesAsync(string outDir)
 
 static byte[] MakePdf()
 {
-    var doc = new Document();
+    using var doc = new Document();
     doc.Add(new TextBlock("External validation sample."));
-    return doc.ToByteArray();
+    return doc.GenerateBytes();
 }
 
 static (string Cert, string Key) MakeRsa()

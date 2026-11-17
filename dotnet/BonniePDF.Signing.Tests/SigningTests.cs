@@ -17,9 +17,9 @@ public class SigningTests
 
     private static byte[] MakePdf()
     {
-        var doc = new Document();
+        using var doc = new Document();
         doc.Add(new TextBlock("Document to be signed."));
-        return doc.ToByteArray();
+        return doc.GenerateBytes();
     }
 
     private static string Latin1(byte[] bytes) => Encoding.Latin1.GetString(bytes);

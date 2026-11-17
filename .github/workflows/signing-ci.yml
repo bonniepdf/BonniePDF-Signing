@@ -8,24 +8,12 @@ on:
   push:
     branches: [master]
     paths:
-      - 'BonniePDF.Signing/**'
-      - 'BonniePDF.Signing.Tests/**'
-      - 'BonniePDF.Signing.SampleGen/**'
-      - 'BonniePDF/**'
-      - 'scripts/pdfsig-validate.sh'
-      - 'shared/**'
-      - 'tools/dss/**'
+      - 'dotnet/**'
       - '.github/workflows/signing-ci.yml'
   pull_request:
     branches: [master]
     paths:
-      - 'BonniePDF.Signing/**'
-      - 'BonniePDF.Signing.Tests/**'
-      - 'BonniePDF.Signing.SampleGen/**'
-      - 'BonniePDF/**'
-      - 'scripts/pdfsig-validate.sh'
-      - 'shared/**'
-      - 'tools/dss/**'
+      - 'dotnet/**'
       - '.github/workflows/signing-ci.yml'
 
 permissions:
@@ -35,17 +23,29 @@ concurrency:
   group: signing-ci-dotnet-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    working-directory: BonniePDF-Signing/dotnet
+
 jobs:
   build:
     name: Build & test BonniePDF.Signing
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: BonniePDF-Signing
+      - uses: actions/checkout@v4
+        with:
+          repository: bonniepdf/BonniePDF-NET
+          path: BonniePDF-NET
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Restore
         run: dotnet restore BonniePDF.Signing.Tests/BonniePDF.Signing.Tests.csproj
@@ -65,15 +65,17 @@ jobs:
           set -euo pipefail
           nupkg=$(ls nupkgs/*.nupkg | head -n1)
           echo "Inspecting $nupkg"
-          unzip -l "$nupkg" | grep -q 'lib/net8.0/BonniePDF.Signing.dll' \
-            || { echo "::error::BonniePDF.Signing.dll missing from package"; exit 1; }
-          echo "Package contains BonniePDF.Signing.dll ✓"
+          for tfm in net8.0 net10.0; do
+            unzip -l "$nupkg" | grep -q "lib/$tfm/BonniePDF.Signing.dll" \
+              || { echo "::error::BonniePDF.Signing.dll ($tfm) missing from package"; exit 1; }
+          done
+          echo "Package contains BonniePDF.Signing.dll for net8.0 and net10.0 ✓"
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
           name: bonniepdf-signing-nupkg
-          path: nupkgs/*.nupkg
+          path: BonniePDF-Signing/dotnet/nupkgs/*.nupkg
           retention-days: 14
 
   validate:
@@ -81,11 +83,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: BonniePDF-Signing
+      - uses: actions/checkout@v4
+        with:
+          repository: bonniepdf/BonniePDF-NET
+          path: BonniePDF-NET
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Install poppler-utils (pdfsig)
         run: sudo apt-get update && sudo apt-get install -y poppler-utils
@@ -105,11 +115,19 @@ jobs:
     # own validator, offline, with only the samples' throwaway CA trusted.
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: BonniePDF-Signing
+      - uses: actions/checkout@v4
+        with:
+          repository: bonniepdf/BonniePDF-NET
+          path: BonniePDF-NET
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Setup JDK
         uses: actions/setup-java@v4
@@ -120,8 +138,8 @@ jobs:
       - name: Cache the DSS validator
         uses: actions/cache@v4
         with:
-          path: tools/dss/lib
-          key: dss-gate-${{ hashFiles('tools/dss/pom.xml') }}
+          path: BonniePDF-Signing/dotnet/tools/dss/lib
+          key: dss-gate-${{ hashFiles('BonniePDF-Signing/dotnet/tools/dss/pom.xml') }}
 
       - name: Generate signed sample PDFs
         run: dotnet run --project BonniePDF.Signing.SampleGen --configuration Release -- signed-samples

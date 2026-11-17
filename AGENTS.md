@@ -1,6 +1,6 @@
 # BonniePDF Signing — agent guide
 
-Commercial digital-signature add-ons for BonniePDF, in **both** runtimes: `@bonniepdf/signing` (TypeScript) and `BonniePDF.Signing` (.NET, `net8.0`). They add invisible and visible CMS/PAdES signatures, RFC 3161 timestamps, and PKCS#12 input.
+Commercial digital-signature add-ons for BonniePDF, in **both** runtimes: `@bonniepdf/signing` (TypeScript) and `BonniePDF.Signing` (.NET, `net8.0;net10.0`). They add invisible and visible CMS/PAdES signatures, RFC 3161 timestamps, and PKCS#12 input.
 
 > **This repository is public.** Keep this file, the README, and code comments useful to an outside contributor who has cloned only this repo.
 
