@@ -32,7 +32,6 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "prepack": "pnpm run build",
-    "prepublishOnly": "node scripts/check-license-key.mjs",
     "clean": "node --input-type=module -e \"import { rmSync } from 'fs'; rmSync('dist', { recursive: true, force: true });\"",
     "test": "vitest run",
     "test:watch": "vitest"

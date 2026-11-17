@@ -1,4 +1,4 @@
-# BonniePDF.Signing licensing and keys
+# BonniePDF.Signing licensing
 
 `BonniePDF.Signing` is separately licensed but is **included with every paid
 core licence** at no additional fee. Production use always requires a paid core
@@ -8,6 +8,30 @@ The governing terms are in [LICENSE](LICENSE). The standard core commercial
 terms incorporated by that agreement are in
 [COMMERCIAL-LICENSE.txt](COMMERCIAL-LICENSE.txt). Current pricing is at
 [bonniepdf.dev/license](https://www.bonniepdf.dev/license/).
+
+## No licence keys
+
+There is no licence key, activation, entitlement check, or telemetry in this
+package. Nothing to paste, nothing to configure, nothing to renew in code, and
+no code path that behaves differently depending on whether you have paid.
+
+This matches the core library, whose licence states plainly that no licence key,
+activation, or telemetry is required. Signing is held to the same standard: the
+package you install is the whole package, and it works identically for everyone.
+
+Your obligation is contractual, not technical. Signing a PDF in production
+requires a paid Solo, Professional, or Enterprise licence. We rely on you to
+hold one — the same way the rest of BonniePDF works.
+
+```csharp
+using BonniePDF.Signing;
+
+byte[] signed = PdfSigner.Sign(pdfBytes, new SignatureSettings
+{
+    Pkcs12 = pfxBytes,
+    Pkcs12Password = "secret",
+});
+```
 
 ## Entitlement model
 
@@ -22,74 +46,14 @@ terms incorporated by that agreement are in
   developer-seat, server, deployment, document, or signature fees.
 - Production rights to versions delivered during an active updates term are
   perpetual. Renewal is optional for future versions and support.
-- Paid production keys are therefore non-expiring. The `exp` claim is reserved
-  for evaluation or another expressly time-limited Order.
 
-## Customer setup
+## Evaluation
 
-Licence verification is offline. Provide the `BPDF1...` key in this precedence
-order: `SignatureSettings.License`, the global `License.Key`,
-`BONNIEPDF_LICENSE_KEY`, or `BONNIEPDF_LICENSE_FILE` (falling back to
-`bonniepdf.license`).
-
-```csharp
-using BonniePDF.Signing;
-
-License.Key = Environment.GetEnvironmentVariable("BONNIEPDF_LICENSE_KEY");
-
-byte[] signed = PdfSigner.Sign(pdfBytes, new SignatureSettings
-{
-    Pkcs12 = pfxBytes,
-    Pkcs12Password = "secret",
-    RequireLicense = true,
-});
-```
-
-Without a key, the package runs in evaluation mode and emits a warning. That
-technical fallback grants no Production Use right. Set `RequireLicense = true`
-or `BONNIEPDF_LICENSE_REQUIRE=1` so a missing production key fails fast.
-
-| Status | Behaviour |
-| --- | --- |
-| Valid, non-expiring production key | Signs silently |
-| No key | Evaluation warning; throws if a licence is required |
-| Time-limited evaluation key within its 30-day grace period | Signs with a warning |
-| Expired beyond grace, forged, malformed, or revoked key | Throws |
-
-## Key claims and issuance
-
-Keys contain a customer identifier, licence/order identifier, legal
-organisation, edition, optional features, issue date, and informational
-`updatesThrough` date. Paid production keys omit `exp`; it is used only for an
-evaluation or expressly time-limited entitlement.
-
-The production private key must remain outside source control, CI logs, build
-artifacts, ordinary synced folders, and customer systems. The matching public
-key is embedded identically in this package and `@bonniepdf/signing`.
-
-From the TypeScript signing directory, generate and install the production
-keypair once:
-
-```bash
-tsx scripts/rotate-license-key.ts --out /secure/vendor-license-key.pem
-```
-
-Then mint a normal non-expiring production key:
-
-```bash
-tsx scripts/mint-license.ts \
-  --key /secure/vendor-license-key.pem \
-  --customer acme-corp \
-  --license-id ord_123 \
-  --organisation "Acme Corp" \
-  --edition professional \
-  --features pades \
-  --updates-through 2027-08-20
-```
-
-The minting script rejects `--exp` for paid production editions. Record the
-Order, legal entity, issued key, covered runtimes, licence version, updates
-term, and any replacement or revocation in the customer licence record.
+Evaluate for as long as you need. There is no time limit, no feature gate, and
+no watermark — evaluation and production builds are byte-for-byte the same.
+The line is what you do with the output: signing documents in production is
+Production Use and requires a paid licence, whatever the size of the business
+or the volume of documents.
 
 ## Signature effect
 

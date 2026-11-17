@@ -16,10 +16,10 @@ ports produce the same signature structures.
 > entitlement under the [Signing Add-On Agreement](LICENSE), which is included
 > with every paid core licence at no extra cost. A standard entitlement covers
 > both runtimes for the named legal entities, with unlimited developers and
-> signing operations. Paid production keys are non-expiring. Set it via `License.Key`, `SignatureSettings.License`, the
-> `BONNIEPDF_LICENSE_KEY` env var, or a `bonniepdf.license` file — verification
-> is fully offline. See **[LICENSING.md](LICENSING.md)** for the step-by-step
-> guide (both using a key and, for the vendor, issuing them).
+> signing operations. There is no licence key, activation, or telemetry: the
+> package behaves identically whether or not you hold a licence, and
+> compliance is contractual rather than enforced in code. See
+> **[LICENSING.md](LICENSING.md)** for the entitlement model.
 
 ## Scope
 

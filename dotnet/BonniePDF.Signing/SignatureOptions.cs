@@ -93,24 +93,6 @@ public sealed class SignatureOptions
         return this;
     }
 
-    /// <summary>
-    /// Sets the commercial licence key (the <c>BPDF1.…</c> token). Optional - if
-    /// not set here, it is read from <see cref="License.Key"/>,
-    /// <c>BONNIEPDF_LICENSE_KEY</c>, or <c>bonniepdf.license</c>.
-    /// </summary>
-    public SignatureOptions WithLicense(string license)
-    {
-        _settings.License = license;
-        return this;
-    }
-
-    /// <summary>Require a valid licence (no evaluation-mode fallback).</summary>
-    public SignatureOptions RequireLicense(bool require = true)
-    {
-        _settings.RequireLicense = require;
-        return this;
-    }
-
     /// <summary>Builds the <see cref="SignatureSettings"/>. Throws if cert/key are missing.</summary>
     public SignatureSettings Build()
     {

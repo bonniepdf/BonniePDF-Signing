@@ -44,7 +44,6 @@ public static class PdfSigner
     {
         if (pdfBytes == null || pdfBytes.Length == 0) throw new ArgumentException("pdfBytes is empty", nameof(pdfBytes));
         settings.Validate();
-        License.Enforce(settings.License, settings.RequireLicense);
 
         using X509Certificate2 cert = CertificateLoader.Load(settings);
         List<X509Certificate2> chain = CertificateLoader.LoadChain(settings);

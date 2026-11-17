@@ -7,7 +7,6 @@ import { pemToDer } from './pem';
 import { buildSignedData } from './cms';
 import { requestTimestamp } from './timestamp';
 import { parsePkcs12 } from './pkcs12';
-import { enforceLicense } from './license';
 import { buildAppearanceStream } from './appearance';
 import { parsePdf, buildIncrementalUpdate, patchByteRange, injectContents, pdfDate, VisibleSignature } from './pdf';
 
@@ -26,7 +25,6 @@ import { parsePdf, buildIncrementalUpdate, patchByteRange, injectContents, pdfDa
 export async function signPdf(pdfBytes: Uint8Array, settings: SignatureSettings): Promise<Uint8Array> {
   if (!(pdfBytes instanceof Uint8Array)) throw new Error('pdfBytes must be a Uint8Array');
   const config = normalizeSettings(settings);
-  await enforceLicense(config.license, config.requireLicense);
   const params = getAlgorithmParams(config.algorithm);
 
   let certDer: Uint8Array;

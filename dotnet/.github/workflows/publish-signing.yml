@@ -65,18 +65,6 @@ jobs:
           ./scripts/update-versions.sh
         fi
 
-    # Refuse to publish while the licence public key is still the committed
-    # PLACEHOLDER (its private half was discarded) — that would ship an
-    # unenforceable licence. Replace License.PublicKeySpki with the real vendor
-    # key (see LICENSING.md) before tagging a release.
-    - name: Guard against the placeholder licence key
-      run: |
-        if grep -q 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdurRtkqh1iLxsOoCJ1yNFV8' BonniePDF.Signing/License.cs; then
-          echo "::error::BonniePDF.Signing/License.cs still embeds the PLACEHOLDER licence public key. Replace License.PublicKeySpki with your real vendor key before publishing. See LICENSING.md."
-          exit 1
-        fi
-        echo "Licence public key is not the placeholder — safe to publish."
-
     - name: Restore
       run: dotnet restore BonniePDF.Signing/BonniePDF.Signing.csproj
 

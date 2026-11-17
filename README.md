@@ -10,8 +10,10 @@ a working branch:
 
 The signing libraries are intentionally separate from the Community-licensed
 core packages.
-They add invisible and visible CMS/PAdES signatures, RFC 3161 timestamps,
-PKCS#12 input, and offline `BPDF1` licence-key gating.
+They add invisible and visible CMS/PAdES signatures, RFC 3161 timestamps, and
+PKCS#12 input. There is no licence key or entitlement check in the code: the
+packages behave identically for everyone, and production use is governed by the
+Signing Add-On Agreement rather than enforced in software.
 
 ## TypeScript
 
@@ -36,24 +38,17 @@ dotnet test .\dotnet\BonniePDF.Signing.Tests\BonniePDF.Signing.Tests.csproj
 dotnet pack .\dotnet\BonniePDF.Signing\BonniePDF.Signing.csproj -c Release
 ```
 
-## Licence Key Rotation
-
-The vendor key rotation script lives in `typescript/signing/scripts` and patches
-both ports by default:
-
-```powershell
-cd .\typescript\signing
-pnpm exec tsx scripts/rotate-license-key.ts --dry-run
-```
-
 ## Licensing
 
 Production signing is always paid. One standard signing entitlement covers both
 runtimes for the legal entities identified in the Order, with unlimited
 developers and signing operations. Rights to covered signing versions are
-perpetual, so paid production keys are non-expiring; annual renewal is optional
-for future versions and support.
+perpetual; annual renewal is optional for future versions and support.
+
+Compliance is contractual, not technical. There are no keys to issue,
+rotate, or revoke, and no vendor key material to protect.
 
 See [LICENSE](LICENSE) for the Signing Add-On Agreement,
 [COMMERCIAL-LICENSE.txt](COMMERCIAL-LICENSE.txt) for incorporated standard
-commercial terms, and each package's `LICENSING.md` for offline key setup.
+commercial terms, and each package's `LICENSING.md` for the entitlement
+model.

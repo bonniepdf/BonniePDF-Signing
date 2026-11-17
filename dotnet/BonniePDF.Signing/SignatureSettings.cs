@@ -81,22 +81,6 @@ public sealed class SignatureSettings
     /// <summary>When set, produces a <b>visible</b> signature with this appearance.</summary>
     public SignatureAppearance Appearance { get; set; }
 
-    /// <summary>
-    /// Commercial licence key (the <c>BPDF1.…</c> token). Optional: if omitted,
-    /// the key is resolved from <see cref="License.Key"/>, the
-    /// <c>BONNIEPDF_LICENSE_KEY</c> env var, or a <c>bonniepdf.license</c> file.
-    /// With no key found, signing runs in evaluation mode (a one-time warning).
-    /// A present-but-invalid key is always an error. See <c>LICENSING.md</c>.
-    /// </summary>
-    public string License { get; set; }
-
-    /// <summary>
-    /// Require a valid licence: when <c>true</c> (or env
-    /// <c>BONNIEPDF_LICENSE_REQUIRE=1</c>), signing without a key throws instead
-    /// of falling back to evaluation mode.
-    /// </summary>
-    public bool RequireLicense { get; set; }
-
     internal bool IsPades => PadesLevel != Level.None;
     internal bool WantsTimestamp => !string.IsNullOrEmpty(TimestampUrl);
 

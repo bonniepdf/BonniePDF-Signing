@@ -99,21 +99,6 @@ export class SignatureOptions {
     return this;
   }
 
-  /**
-   * Sets the commercial licence key (the `BPDF1.…` token). Optional — if not
-   * set here, it is read from `BONNIEPDF_LICENSE_KEY` or `bonniepdf.license`.
-   */
-  withLicense(license: string): this {
-    this.settings.license = license;
-    return this;
-  }
-
-  /** Require a valid licence (no evaluation-mode fallback). */
-  requireLicense(require = true): this {
-    this.settings.requireLicense = require;
-    return this;
-  }
-
   /** Builds the {@link SignatureSettings}. Throws if cert/key are missing. */
   build(): SignatureSettings {
     const hasPfx = this.settings.pkcs12 instanceof Uint8Array && this.settings.pkcs12.length > 0;

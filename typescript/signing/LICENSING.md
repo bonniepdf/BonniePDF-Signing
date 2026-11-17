@@ -1,4 +1,4 @@
-# @bonniepdf/signing licensing and keys
+# @bonniepdf/signing licensing
 
 `@bonniepdf/signing` is separately licensed but is **included with every paid
 core licence** at no additional fee. Production use always requires a paid core
@@ -8,6 +8,29 @@ The governing terms are in [LICENSE](LICENSE). The standard core commercial
 terms incorporated by that agreement are in
 [COMMERCIAL-LICENSE.txt](COMMERCIAL-LICENSE.txt). Current pricing is at
 [bonniepdf.dev/license](https://www.bonniepdf.dev/license/).
+
+## No licence keys
+
+There is no licence key, activation, entitlement check, or telemetry in this
+package. Nothing to paste, nothing to configure, nothing to renew in code, and
+no code path that behaves differently depending on whether you have paid.
+
+This matches the core library, whose licence states plainly that no licence key,
+activation, or telemetry is required. Signing is held to the same standard: the
+package you install is the whole package, and it works identically for everyone.
+
+Your obligation is contractual, not technical. Signing a PDF in production
+requires a paid Solo, Professional, or Enterprise licence. We rely on you to
+hold one — the same way the rest of BonniePDF works.
+
+```ts
+import { signPdf } from '@bonniepdf/signing'
+
+const signed = await signPdf(pdfBytes, {
+  pkcs12: pfxBytes,
+  pkcs12Password: 'secret',
+})
+```
 
 ## Entitlement model
 
@@ -22,94 +45,14 @@ terms incorporated by that agreement are in
   developer-seat, server, deployment, document, or signature fees.
 - Production rights to versions delivered during an active updates term are
   perpetual. Renewal is optional for future versions and support.
-- Paid production keys are therefore non-expiring. The `exp` claim is reserved
-  for evaluation or another expressly time-limited Order.
 
-## Customer setup
+## Evaluation
 
-Licence verification is offline: no activation server, phone-home, telemetry,
-or network connection is required. Provide the `BPDF1...` key in one of these
-ways, in precedence order:
-
-1. `settings.license` in code;
-2. `BONNIEPDF_LICENSE_KEY` in Node, Bun, or Deno; or
-3. `BONNIEPDF_LICENSE_FILE`, falling back to `bonniepdf.license` in the working
-   directory.
-
-Browser applications must pass the key explicitly, normally by injecting it at
-build time.
-
-```ts
-import { signPdf } from '@bonniepdf/signing'
-
-const signed = await signPdf(pdfBytes, {
-  license: process.env.BONNIEPDF_LICENSE_KEY,
-  pkcs12: pfxBytes,
-  pkcs12Password: 'secret',
-  requireLicense: true,
-})
-```
-
-Without a key, the package runs in evaluation mode and emits a warning. That
-technical fallback grants no Production Use right. Set `requireLicense: true`
-or `BONNIEPDF_LICENSE_REQUIRE=1` so a missing production key fails fast.
-
-| Status | Behaviour |
-| --- | --- |
-| Valid, non-expiring production key | Signs silently |
-| No key | Evaluation warning; throws if a licence is required |
-| Time-limited evaluation key within its 30-day grace period | Signs with a warning |
-| Expired beyond grace, forged, malformed, or revoked key | Throws |
-
-## What a key contains
-
-| Claim | Meaning |
-| --- | --- |
-| `sub` | Stable customer identifier used for attribution and revocation |
-| `licenseId` | Order or licence record identifier |
-| `organisation` | Human-readable licensed legal entity |
-| `edition` | `solo`, `signing`, `professional`, `enterprise`, or `evaluation` |
-| `features` | Optional product flags |
-| `iat` | Issue date |
-| `updatesThrough` | Informational last date for included new releases |
-| `exp` | Evaluation/time-limited expiry; omitted from paid perpetual keys |
-
-## Vendor key issuance
-
-The production private key must be held outside source control, CI logs, build
-artifacts, ordinary synced folders, and customer systems. The matching public
-key is embedded in both signing implementations.
-
-Generate and install a keypair once:
-
-```bash
-tsx scripts/rotate-license-key.ts --out /secure/vendor-license-key.pem
-```
-
-The script updates both embedded public keys and performs a mint/verify
-self-test. Commit only the public keys. The package publish guard refuses to
-publish while the placeholder remains.
-
-Mint a normal non-expiring production key:
-
-```bash
-tsx scripts/mint-license.ts \
-  --key /secure/vendor-license-key.pem \
-  --customer acme-corp \
-  --license-id ord_123 \
-  --organisation "Acme Corp" \
-  --edition professional \
-  --features pades \
-  --updates-through 2027-08-20
-```
-
-Do not pass `--exp` for a paid production entitlement. The script rejects that
-combination. An evaluation key may use `--edition evaluation --exp YYYY-MM-DD`.
-
-Record the Order, legal entity, issued key, covered runtimes, licence version,
-updates term, and any replacement or revocation in the customer licence record.
-Because revocation is offline, a revoked customer identifier takes effect only
-in releases that contain the updated revocation list.
+Evaluate for as long as you need. There is no time limit, no feature gate, and
+no watermark — evaluation and production builds are byte-for-byte the same.
+The line is what you do with the output: signing documents in production is
+Production Use and requires a paid licence, whatever the size of the business
+or the volume of documents.
 
 ## Signature effect
 

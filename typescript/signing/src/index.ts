@@ -15,14 +15,6 @@ export type { SignatureAppearance } from './appearance';
 export type { HttpClient } from './timestamp';
 
 // Licence verification (offline; commercial add-on).
-export {
-  verifyLicense,
-  resolveLicenseKey,
-  enforceLicense,
-  LICENSE_PUBLIC_KEY_SPKI,
-  REVOKED_CUSTOMERS,
-} from './license';
-export type { LicenseClaims, LicenseEdition, LicenseStatus, LicenseVerification } from './license';
 
 // Lower-level building blocks, exported for advanced use and testing.
 export { pemToDer, derToPem, base64ToBytes, bytesToBase64 } from './pem';

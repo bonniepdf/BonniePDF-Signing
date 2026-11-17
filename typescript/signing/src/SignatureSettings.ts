@@ -73,19 +73,6 @@ export interface SignatureSettings {
    * and an appearance stream instead of the default invisible `[0 0 0 0]`.
    */
   appearance?: SignatureAppearance;
-  /**
-   * Commercial licence key (the `BPDF1.…` token). Optional here: if omitted,
-   * the key is resolved from the `BONNIEPDF_LICENSE_KEY` env var or a
-   * `bonniepdf.license` file. With no key found, signing runs in evaluation
-   * mode (a one-time warning). A present-but-invalid key is always an error.
-   * See `LICENSING.md`.
-   */
-  license?: string;
-  /**
-   * Require a valid licence: when `true` (or env `BONNIEPDF_LICENSE_REQUIRE=1`),
-   * signing without a key throws instead of falling back to evaluation mode.
-   */
-  requireLicense?: boolean;
 }
 
 /** Fill in defaults and validate required fields, returning a normalized copy. */
