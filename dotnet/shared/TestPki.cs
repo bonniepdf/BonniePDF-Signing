@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
@@ -129,12 +130,19 @@ internal static class TestPki
             List<Der.Node> imprintParts = Der.Children(request, messageImprint);
             Imprints.Add(Der.Content(request, imprintParts[1]));
 
+            // RFC 3161 §2.4.2: the nonce must be echoed when the request carried one.
+            byte[][] nonce = children.Skip(2).Where(node => node.Tag == 0x02)
+                .Take(1).Select(node => Der.NodeBytes(request, node)).ToArray();
+
             byte[] tstInfo = Der.Sequence(
-                Der.IntegerSmall(1),
-                Der.Oid(TsaPolicyOid),
-                Der.NodeBytes(request, messageImprint),
-                Der.IntegerSmall(_serial++),
-                Der.GeneralizedTime(DateTimeOffset.UtcNow));
+                [
+                    Der.IntegerSmall(1),
+                    Der.Oid(TsaPolicyOid),
+                    Der.NodeBytes(request, messageImprint),
+                    Der.IntegerSmall(_serial++),
+                    Der.GeneralizedTime(DateTimeOffset.UtcNow),
+                    .. nonce,
+                ]);
 
             var contentInfo = new ContentInfo(new Oid(TstInfoOid), tstInfo);
             using X509Certificate2 tsaCert = SigningCertificate();

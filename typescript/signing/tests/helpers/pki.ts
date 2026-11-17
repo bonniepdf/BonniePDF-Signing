@@ -221,12 +221,16 @@ export class TestTsa {
     const hashed = imprintParts[1];
     this.imprints.push(request.slice(hashed.contentStart, hashed.contentEnd));
 
+    // RFC 3161 §2.4.2: the nonce must be echoed when the request carried one.
+    const nonce = children.find((node, i) => i > 1 && node.tag === der.Tag.INTEGER);
+
     const tstInfo = der.sequence(
       der.integer(1),
       der.oid(OID_TSA_POLICY),
       der.nodeBytes(request, messageImprint),
       der.integer(this.serial++),
-      der.generalizedTime(new Date())
+      der.generalizedTime(new Date()),
+      ...(nonce ? [der.nodeBytes(request, nonce)] : [])
     );
 
     const token = await buildAttachedSignedData(Oids.tstInfo, tstInfo, this.identity, true);

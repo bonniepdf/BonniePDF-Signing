@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Threading;
@@ -51,7 +52,7 @@ internal static class Rfc3161Client
         return Der.Sequence(
             Der.IntegerSmall(1),
             messageImprint,
-            Der.IntegerFromBytes(nonce),
+            Der.IntegerFromBytes(nonce), // nonce: CheckToken requires it echoed back
             Der.Boolean(true)); // certReq TRUE (include TSA cert in the token)
     }
 
@@ -72,6 +73,67 @@ internal static class Rfc3161Client
         Buffer.BlockCopy(response, token.Start, outp, 0, outp.Length);
         return outp;
     }
+
+    /// <summary>
+    /// Check that a TimeStampToken answers the request that was sent (RFC 3161
+    /// §2.4.2): its TSTInfo must carry the requested hash algorithm and imprint,
+    /// and echo the request's nonce. Throws otherwise.
+    /// </summary>
+    /// <remarks>
+    /// Without this a token for different data - from a misrouted request, a
+    /// misbehaving authority, or a replayed response - would be embedded
+    /// silently and only fail when someone came to validate the signature. The
+    /// nonce is what makes a replayed response detectable; sending one without
+    /// checking it protects nothing.
+    /// <para>
+    /// This checks the token's content, not its signature: whether to trust the
+    /// authority is the validator's decision, made against its own trust anchors.
+    /// </para>
+    /// </remarks>
+    internal static void CheckToken(byte[] token, HashAlgorithmName hashName, byte[] imprint, byte[] nonce)
+    {
+        List<Der.Node> fields;
+        try
+        {
+            // ContentInfo > [0] > SignedData > encapContentInfo > [0] > OCTET STRING > TSTInfo
+            Der.Node signedData = Der.Children(token, Der.Children(token, Der.Read(token, 0))[1])[0];
+            Der.Node eContent = Der.Children(token, Der.Children(token, Der.Children(token, signedData)[2])[1])[0];
+            fields = Der.Children(token, Der.Read(token, eContent.ContentStart));
+        }
+        catch (Exception e) when (e is ArgumentOutOfRangeException or IndexOutOfRangeException or InvalidOperationException)
+        {
+            throw Mismatch("its TSTInfo cannot be read");
+        }
+
+        // TSTInfo ::= SEQUENCE { version, policy, messageImprint, serialNumber, genTime,
+        //   accuracy OPTIONAL, ordering DEFAULT FALSE, nonce OPTIONAL, ... }
+        List<Der.Node> messageImprint = Der.Children(token, fields[2]);
+        Der.Node algorithmOid = Der.Children(token, messageImprint[0])[0];
+        if (!Der.NodeBytes(token, algorithmOid).AsSpan().SequenceEqual(Der.Oid(HashOid(hashName))))
+            throw Mismatch("different hash algorithm");
+        if (!Der.Content(token, messageImprint[1]).AsSpan().SequenceEqual(imprint))
+            throw Mismatch("different message imprint");
+
+        Der.Node? echoed = null;
+        for (int i = 5; i < fields.Count; i++)
+        {
+            if (fields[i].Tag == 0x02) { echoed = fields[i]; break; }
+        }
+        if (echoed is not { } nonceNode) throw Mismatch("no nonce");
+        if (!IntegerMagnitude(Der.Content(token, nonceNode)).SequenceEqual(IntegerMagnitude(nonce)))
+            throw Mismatch("different nonce");
+    }
+
+    /// <summary>A non-negative big-endian integer with its leading zero bytes removed.</summary>
+    private static ReadOnlySpan<byte> IntegerMagnitude(byte[] bytes)
+    {
+        int start = 0;
+        while (start < bytes.Length && bytes[start] == 0) start++;
+        return bytes.AsSpan(start);
+    }
+
+    private static CryptographicException Mismatch(string why) =>
+        new($"timestamp token does not answer this request: {why}");
 
     public static Task<byte[]> GetTokenAsync(
         byte[] signatureValue, HashAlgorithmName hashName, SignatureSettings settings, CancellationToken ct) =>
@@ -103,6 +165,8 @@ internal static class Rfc3161Client
             "timestamp request",
             ct).ConfigureAwait(false);
 
-        return ExtractToken(response);
+        byte[] token = ExtractToken(response);
+        CheckToken(token, hashName, imprint, nonce);
+        return token;
     }
 }

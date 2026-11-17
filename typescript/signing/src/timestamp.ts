@@ -47,7 +47,7 @@ export function buildTimeStampReq(imprint: Uint8Array, hashName: string, nonce: 
   return der.sequence(
     der.integer(1), // version
     messageImprint,
-    der.integerFromBytes(nonce), // nonce (replay protection)
+    der.integerFromBytes(nonce), // nonce: checkTimeStampToken requires it echoed back
     der.tlv(0x01, new Uint8Array([0xff])) // certReq BOOLEAN TRUE (include TSA cert)
   );
 }
@@ -73,8 +73,72 @@ export function extractTokenFromResponse(response: Uint8Array): Uint8Array {
 }
 
 /**
+ * Check that a `TimeStampToken` answers the request that was sent (RFC 3161
+ * §2.4.2): its `TSTInfo` must carry the requested hash algorithm and imprint,
+ * and echo the request's nonce. Throws otherwise.
+ *
+ * Without this a token for different data - from a misrouted request, a
+ * misbehaving authority, or a replayed response - would be embedded silently
+ * and only fail when someone came to validate the signature. The nonce is what
+ * makes a replayed response detectable; sending one without checking it
+ * protects nothing.
+ *
+ * This checks the token's content, not its signature: whether to trust the
+ * authority is the validator's decision, made against its own trust anchors.
+ */
+export function checkTimeStampToken(
+  token: Uint8Array,
+  hashName: string,
+  imprint: Uint8Array,
+  nonce: Uint8Array
+): void {
+  const fail = (why: string): never => {
+    throw new Error(`timestamp token does not answer this request: ${why}`);
+  };
+  const children = (node: der.DerNode): der.DerNode[] => der.readChildren(token, node.contentStart, node.contentEnd);
+
+  let fields: der.DerNode[];
+  try {
+    // ContentInfo > [0] > SignedData > encapContentInfo > [0] > OCTET STRING > TSTInfo
+    const signedData = children(children(der.readNode(token, 0))[1])[0];
+    const eContent = children(children(children(signedData)[2])[1])[0];
+    fields = children(der.readNode(token, eContent.contentStart));
+  } catch {
+    return fail('its TSTInfo cannot be read');
+  }
+
+  // TSTInfo ::= SEQUENCE { version, policy, messageImprint, serialNumber, genTime,
+  //   accuracy OPTIONAL, ordering DEFAULT FALSE, nonce OPTIONAL, ... }
+  const [algorithm, hashed] = children(fields[2]);
+  const algorithmOid = children(algorithm)[0];
+  if (!equalBytes(der.nodeBytes(token, algorithmOid), der.oid(HASH_OID[hashName]))) {
+    fail('different hash algorithm');
+  }
+  if (!equalBytes(token.subarray(hashed.contentStart, hashed.contentEnd), imprint)) {
+    fail('different message imprint');
+  }
+  const echoed = fields.slice(5).find(field => field.tag === der.Tag.INTEGER);
+  if (!echoed) fail('no nonce');
+  if (!equalBytes(integerMagnitude(token.subarray(echoed!.contentStart, echoed!.contentEnd)), integerMagnitude(nonce))) {
+    fail('different nonce');
+  }
+}
+
+/** A non-negative big-endian integer with its leading zero bytes removed. */
+function integerMagnitude(bytes: Uint8Array): Uint8Array {
+  let start = 0;
+  while (start < bytes.length && bytes[start] === 0) start++;
+  return bytes.subarray(start);
+}
+
+function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
+  return a.length === b.length && a.every((byte, i) => byte === b[i]);
+}
+
+/**
  * Request an RFC 3161 timestamp for `data`: hash it, build the request, POST it
- * to the TSA, and return the DER `TimeStampToken` ready to embed in CMS.
+ * to the TSA, check the token answers that request, and return the DER
+ * `TimeStampToken` ready to embed in CMS.
  */
 export async function requestTimestamp(data: Uint8Array, options: TimestampOptions): Promise<Uint8Array> {
   const hashName = options.hashName ?? 'SHA-256';
@@ -95,5 +159,7 @@ export async function requestTimestamp(data: Uint8Array, options: TimestampOptio
     },
     'timestamp request'
   );
-  return extractTokenFromResponse(body);
+  const token = extractTokenFromResponse(body);
+  checkTimeStampToken(token, hashName, imprint, nonce);
+  return token;
 }

@@ -3,7 +3,8 @@ import { Document, TextBlock, StandardFonts } from '@bonniepdf/core';
 import { signPdf } from '../src/signPdf';
 import { SigningAlgorithm } from '../src/SigningAlgorithm';
 import { latin1Decode, indexOfAscii } from '../src/pdf';
-import { buildTimeStampReq, extractTokenFromResponse } from '../src/timestamp';
+import { buildTimeStampReq, checkTimeStampToken, extractTokenFromResponse } from '../src/timestamp';
+import { TestTsa, generateKeyPair, issueCertificate } from './helpers/pki';
 import { verifyCms, parseCms, readContents, signedAttrsContainOid } from './helpers/cms';
 import * as der from '../src/asn1/der';
 import { Oids } from '../src/asn1/oids';
@@ -14,6 +15,14 @@ import { join } from 'path';
 const fixtures = join(__dirname, 'fixtures', 'signing');
 const certRsa = readFileSync(join(fixtures, 'cert-rsa.pem'), 'utf8');
 const keyRsa = readFileSync(join(fixtures, 'key-rsa.pem'), 'utf8');
+
+/** An in-process RFC 3161 authority that answers what it is asked. */
+let tsa: TestTsa;
+beforeAll(async () => {
+  tsa = new TestTsa(
+    await issueCertificate({ subject: 'BonniePDF Test TSA', serial: 1, subjectKeys: await generateKeyPair() })
+  );
+});
 
 async function makePdf(): Promise<Uint8Array> {
   const doc = new Document();
@@ -78,15 +87,49 @@ describe('RFC 3161 timestamp encoding', () => {
     const resp = der.sequence(der.sequence(der.integer(2))); // status rejection
     expect(() => extractTokenFromResponse(resp)).toThrow();
   });
+
+  // RFC 3161 section 2.4.2: a token is accepted only if it answers the request
+  // that was sent - same hash algorithm and imprint, and the nonce echoed back.
+  const imprint = new Uint8Array(32).fill(7);
+  const nonce = new Uint8Array([0x80, 1, 2, 3]);
+  const tokenFor = async (request: Uint8Array): Promise<Uint8Array> =>
+    extractTokenFromResponse(await tsa.respond(request));
+
+  it('accepts a token that answers the request', async () => {
+    const token = await tokenFor(buildTimeStampReq(imprint, 'SHA-256', nonce));
+    expect(() => checkTimeStampToken(token, 'SHA-256', imprint, nonce)).not.toThrow();
+  });
+
+  it('rejects a token for a different imprint', async () => {
+    const token = await tokenFor(buildTimeStampReq(new Uint8Array(32).fill(8), 'SHA-256', nonce));
+    expect(() => checkTimeStampToken(token, 'SHA-256', imprint, nonce)).toThrow(/imprint/);
+  });
+
+  it('rejects a token for a different hash algorithm', async () => {
+    const token = await tokenFor(buildTimeStampReq(imprint, 'SHA-384', nonce));
+    expect(() => checkTimeStampToken(token, 'SHA-256', imprint, nonce)).toThrow(/hash algorithm/);
+  });
+
+  it('rejects a token that echoes a different nonce, as a replayed response would', async () => {
+    const token = await tokenFor(buildTimeStampReq(imprint, 'SHA-256', new Uint8Array([9, 9])));
+    expect(() => checkTimeStampToken(token, 'SHA-256', imprint, nonce)).toThrow(/different nonce/);
+  });
+
+  it('rejects a token that carries no nonce', async () => {
+    const withoutNonce = der.sequence(
+      der.integer(1),
+      der.sequence(der.sequence(der.oid(Oids.sha256), der.nullValue()), der.octetString(imprint))
+    );
+    const token = await tokenFor(withoutNonce);
+    expect(() => checkTimeStampToken(token, 'SHA-256', imprint, nonce)).toThrow(/no nonce/);
+  });
 });
 
-describe('PAdES B-T (timestamp embedding via mock TSA)', () => {
+describe('PAdES B-T (timestamp embedding via a test TSA)', () => {
   it('embeds a signature-timestamp unsigned attribute and still verifies', async () => {
-    // Mock TSA: ignore the request, return a granted response wrapping a token.
-    const fakeToken = der.sequence(der.oid(Oids.signedData), der.octetString(new Uint8Array([9, 9, 9])));
-    const httpClient = async () => ({
+    const httpClient = async (request: { body?: Uint8Array }) => ({
       status: 200,
-      body: der.sequence(der.sequence(der.integer(0)), fakeToken),
+      body: await tsa.respond(request.body!),
     });
 
     const signed = await signPdf(await makePdf(), {
