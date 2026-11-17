@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="dotnet/BonniePDF.Signing/BonniePDF.Signing.csproj" />
+  <Project Path="dotnet/BonniePDF.Signing.Tests/BonniePDF.Signing.Tests.csproj" />
+  <Project Path="dotnet/BonniePDF.Signing.SampleGen/BonniePDF.Signing.SampleGen.csproj" />
+  <Project Path="../BonniePDF-NET/BonniePDF/BonniePDF.csproj" />
+</Solution>

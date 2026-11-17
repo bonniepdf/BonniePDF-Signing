@@ -1,0 +1,8 @@
+# The repo root escalates all Performance-category analyzers to error. Several
+# regexes in the PDF reader are built from dynamic strings (object ids, keys),
+# so the compiled Regex source generator (MA0110 / SYSLIB1045) cannot apply.
+# Disable just those two rules for this project; per-rule severity overrides the
+# root's category-level setting.
+[*.cs]
+dotnet_diagnostic.MA0110.severity = none
+dotnet_diagnostic.SYSLIB1045.severity = none

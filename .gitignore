@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+
+bin/
+obj/
+nupkgs/
+signed-samples/
+
+*.user
+*.suo
+*.nupkg
+vendor-license-key.pem
+bonniepdf.license

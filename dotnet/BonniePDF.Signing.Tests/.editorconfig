@@ -1,0 +1,5 @@
+# Test code uses Regex helpers; the repo root escalates Performance-category
+# analyzers to error. Disable the Regex source-generator rules here (test-only).
+[*.cs]
+dotnet_diagnostic.MA0110.severity = none
+dotnet_diagnostic.SYSLIB1045.severity = none
