@@ -12,9 +12,11 @@ This is the .NET counterpart of the npm package `@bonniepdf/signing`; the two
 ports produce the same signature structures.
 
 > **Commercial add-on.** Signing is a paid module and is **not** part of the
-> free `BonniePDF` core. It ships under the BonniePDF Commercial License and
-> requires a paid licence key (Professional, Enterprise, or the standalone
-> Signing licence). Set it via `License.Key`, `SignatureSettings.License`, the
+> Community-licensed `BonniePDF` core. Production use requires a signing
+> entitlement under the [Signing Add-On Agreement](LICENSE), which is included
+> with every paid core licence at no extra cost. A standard entitlement covers
+> both runtimes for the named legal entities, with unlimited developers and
+> signing operations. Paid production keys are non-expiring. Set it via `License.Key`, `SignatureSettings.License`, the
 > `BONNIEPDF_LICENSE_KEY` env var, or a `bonniepdf.license` file — verification
 > is fully offline. See **[LICENSING.md](LICENSING.md)** for the step-by-step
 > guide (both using a key and, for the vendor, issuing them).

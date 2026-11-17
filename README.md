@@ -8,7 +8,8 @@ a working branch:
 - `typescript/signing` - `@bonniepdf/signing`
 - `dotnet/BonniePDF.Signing` - `BonniePDF.Signing`
 
-The signing libraries are intentionally separate from the free core packages.
+The signing libraries are intentionally separate from the Community-licensed
+core packages.
 They add invisible and visible CMS/PAdES signatures, RFC 3161 timestamps,
 PKCS#12 input, and offline `BPDF1` licence-key gating.
 
@@ -44,3 +45,15 @@ both ports by default:
 cd .\typescript\signing
 pnpm exec tsx scripts/rotate-license-key.ts --dry-run
 ```
+
+## Licensing
+
+Production signing is always paid. One standard signing entitlement covers both
+runtimes for the legal entities identified in the Order, with unlimited
+developers and signing operations. Rights to covered signing versions are
+perpetual, so paid production keys are non-expiring; annual renewal is optional
+for future versions and support.
+
+See [LICENSE](LICENSE) for the Signing Add-On Agreement,
+[COMMERCIAL-LICENSE.txt](COMMERCIAL-LICENSE.txt) for incorporated standard
+commercial terms, and each package's `LICENSING.md` for offline key setup.

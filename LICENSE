@@ -1,0 +1,50 @@
+BONNIEPDF SIGNING PACKAGE NOTICE 1.0
+
+Version 1.0
+Effective 4 September 2026
+
+This notice applies to the BonniePDF digital-signing packages,
+BonniePDF.Signing for .NET and @bonniepdf/signing for TypeScript/JavaScript.
+
+These packages are part of the BonniePDF Software licensed under the BonniePDF
+Commercial License Agreement. They are not licensed under the BonniePDF
+Community License, which licenses the core library only.
+
+EVALUATION
+
+You may install and use these packages without a paid licence for internal
+development, testing, security review, proof of concept, and non-production
+staging, for as long as you need and with no reduction in functionality.
+Evaluation excludes Production Use, processing live customer data, and
+distribution outside the evaluator and its evaluation contractors.
+
+PRODUCTION USE REQUIRES A PAID LICENCE
+
+Production Use of these packages - use to create or modify a PDF in a live
+application, service, workflow, or environment for the benefit of you, your
+customers, or a third party - requires a paid BonniePDF licence under the
+BonniePDF Commercial License Agreement. Digital signing is included with every
+paid licence at no additional fee and is not sold separately.
+
+NO TECHNICAL ENFORCEMENT
+
+These packages contain no licence key, activation, telemetry, or remote
+validation. They behave identically whether or not a licence has been paid for.
+The technical ability to produce a signature is not permission to do so: the
+absence of a technical restriction is not a licence, a waiver, or evidence of
+permission.
+
+NO WARRANTY OF SIGNATURE VALIDITY
+
+These packages act on cryptographic material you supply or obtain. Nothing in
+them warrants that a signature is qualified, admissible, or legally valid in
+any jurisdiction. Optional timestamping and certificate validation depend on
+third-party services outside our control.
+
+FULL TERMS
+
+Your rights, restrictions, and perpetual rights to covered versions are set out
+in full in the BonniePDF Commercial License Agreement, which controls if this
+notice and that agreement differ.
+
+  https://www.bonniepdf.dev/legal/commercial-license

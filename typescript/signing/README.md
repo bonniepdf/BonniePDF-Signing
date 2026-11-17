@@ -11,9 +11,11 @@ are **zero runtime dependencies** - every cryptographic operation runs on the
 and serverless runtimes.
 
 > **Commercial add-on.** Signing is a paid module and is **not** part of the
-> free `@bonniepdf/core`. It ships under the BonniePDF Commercial License and
-> requires a paid licence key (Professional, Enterprise, or the standalone
-> Signing licence). Drop the key into `settings.license`, the
+> Community-licensed `@bonniepdf/core`. Production use requires a signing
+> entitlement under the [Signing Add-On Agreement](LICENSE), which is included
+> with every paid core licence at no extra cost. A standard entitlement covers
+> both runtimes for the named legal entities, with unlimited developers and
+> signing operations. Paid production keys are non-expiring. Drop the key into `settings.license`, the
 > `BONNIEPDF_LICENSE_KEY` env var, or a `bonniepdf.license` file — verification
 > is fully offline. See **[LICENSING.md](LICENSING.md)** for the step-by-step
 > guide (both using a key and, for the vendor, issuing them).
@@ -156,3 +158,7 @@ or supply PEM instead.
 - **Visible appearance is text-only.** Image appearances are not yet supported.
 
 See the internal PDF-signing roadmap for the planned LTV / multiple-signature work.
+
+The package embeds certificates and signature material supplied by the user. It
+does not validate identity, certificate trust, or legal effect, and does not by
+itself create a qualified electronic signature.
