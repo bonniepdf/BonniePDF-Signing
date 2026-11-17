@@ -13,3 +13,11 @@ signed-samples/
 *.nupkg
 vendor-license-key.pem
 bonniepdf.license
+
+# Environment variables - never commit real values (.env.example is fine)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+!.env.example
