@@ -1,0 +1,89 @@
+name: Signing CI (TS)
+
+# Typechecks, builds and tests the @bonniepdf/signing add-on package.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'signing/**'
+      - 'core/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/signing-ci.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'signing/**'
+      - 'core/**'
+      - '.github/workflows/signing-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signing-ci-ts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Build, typecheck & test @bonniepdf/signing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm prettier --check "signing/**/*.{ts,json,md}"
+
+      - name: Typecheck
+        run: pnpm --filter @bonniepdf/signing run typecheck
+
+      - name: Build
+        run: pnpm --filter @bonniepdf/signing run build
+
+      - name: Test
+        run: pnpm --filter @bonniepdf/signing run test
+
+      # Package-lint gates: catch a broken exports / types / files map before it
+      # reaches npm (where a bad GA version is effectively permanent). publint is
+      # a hard gate; are-the-types-wrong is advisory (its dual ESM/CJS heuristics
+      # can be stricter than we ship for).
+      - name: Lint published package (publint)
+        run: cd signing && pnpm dlx publint --strict
+      - name: Check type resolution (attw)
+        continue-on-error: true
+        run: cd signing && pnpm dlx @arethetypeswrong/cli --pack .
+
+  validate:
+    name: External validation (pdfsig)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install poppler-utils (pdfsig)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Generate signed sample PDFs
+        run: pnpm exec tsx signing/scripts/generate-signed-samples.ts signing/signed-samples
+
+      - name: Validate signatures with pdfsig
+        run: bash signing/scripts/pdfsig-validate.sh signing/signed-samples

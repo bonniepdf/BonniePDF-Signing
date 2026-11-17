@@ -1,0 +1,93 @@
+name: Signing CI (.NET)
+
+# Builds and tests the BonniePDF.Signing add-on. This is the gate that
+# compiles the .NET port (which has no SDK in some authoring environments)
+# and runs its xUnit suite before any release.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'BonniePDF.Signing/**'
+      - 'BonniePDF.Signing.Tests/**'
+      - 'BonniePDF.Signing.SampleGen/**'
+      - 'BonniePDF/**'
+      - 'scripts/pdfsig-validate.sh'
+      - '.github/workflows/signing-ci.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'BonniePDF.Signing/**'
+      - 'BonniePDF.Signing.Tests/**'
+      - 'BonniePDF.Signing.SampleGen/**'
+      - 'BonniePDF/**'
+      - 'scripts/pdfsig-validate.sh'
+      - '.github/workflows/signing-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signing-ci-dotnet-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & test BonniePDF.Signing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore BonniePDF.Signing.Tests/BonniePDF.Signing.Tests.csproj
+
+      - name: Build
+        run: dotnet build BonniePDF.Signing.Tests/BonniePDF.Signing.Tests.csproj --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test BonniePDF.Signing.Tests/BonniePDF.Signing.Tests.csproj --no-build --configuration Release --verbosity normal
+
+      - name: Pack
+        run: dotnet pack BonniePDF.Signing/BonniePDF.Signing.csproj --configuration Release --output nupkgs
+
+      # Confirm the produced package actually contains the compiled assembly.
+      - name: Verify package contents
+        run: |
+          set -euo pipefail
+          nupkg=$(ls nupkgs/*.nupkg | head -n1)
+          echo "Inspecting $nupkg"
+          unzip -l "$nupkg" | grep -q 'lib/net8.0/BonniePDF.Signing.dll' \
+            || { echo "::error::BonniePDF.Signing.dll missing from package"; exit 1; }
+          echo "Package contains BonniePDF.Signing.dll ✓"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bonniepdf-signing-nupkg
+          path: nupkgs/*.nupkg
+          retention-days: 14
+
+  validate:
+    name: External validation (pdfsig)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install poppler-utils (pdfsig)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Generate signed sample PDFs
+        run: dotnet run --project BonniePDF.Signing.SampleGen --configuration Release -- signed-samples
+
+      - name: Validate signatures with pdfsig
+        run: bash scripts/pdfsig-validate.sh signed-samples

@@ -1,0 +1,94 @@
+name: Publish Signing to NuGet
+
+# Publishes the commercial BonniePDF.Signing add-on to nuget.org. Kept separate
+# from publish.yml (which ships the free core) so the add-on can release on its
+# own cadence via a `signing-v*` tag, without entangling the two version lines.
+# The package is public + licence-gated at runtime (Model A).
+
+on:
+  push:
+    tags:
+      - 'signing-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (leave empty to derive from versions.json)'
+        required: false
+        type: string
+
+# Serialize releases so two quick tag pushes can't publish concurrently.
+concurrency:
+  group: publish-signing-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read   # checkout
+  actions: write   # delete prior workflow runs
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Delete this workflow's prior runs first, so the Actions tab only shows the
+    # current run. Best-effort: never block the publish if cleanup hiccups.
+    - name: Delete prior workflow runs
+      continue-on-error: true
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh run list \
+          --repo "${{ github.repository }}" \
+          --workflow publish-signing.yml \
+          --json databaseId \
+          --jq '.[].databaseId' \
+          --limit 100 \
+        | grep -v '^${{ github.run_id }}$' \
+        | xargs -r -I{} gh run delete --repo "${{ github.repository }}" {}
+
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    # Stamp the version from the single source of truth (versions.json), the same
+    # script publish.yml uses for core — so signing tracks the core CalVer line
+    # in lockstep. This auto-discovers every .csproj, including the signing one.
+    - name: Update version
+      run: |
+        chmod +x scripts/update-versions.sh
+        if [ -n "${{ github.event.inputs.version }}" ]; then
+          ./scripts/update-versions.sh --version "${{ github.event.inputs.version }}"
+        else
+          ./scripts/update-versions.sh
+        fi
+
+    # Refuse to publish while the licence public key is still the committed
+    # PLACEHOLDER (its private half was discarded) — that would ship an
+    # unenforceable licence. Replace License.PublicKeySpki with the real vendor
+    # key (see LICENSING.md) before tagging a release.
+    - name: Guard against the placeholder licence key
+      run: |
+        if grep -q 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdurRtkqh1iLxsOoCJ1yNFV8' BonniePDF.Signing/License.cs; then
+          echo "::error::BonniePDF.Signing/License.cs still embeds the PLACEHOLDER licence public key. Replace License.PublicKeySpki with your real vendor key before publishing. See LICENSING.md."
+          exit 1
+        fi
+        echo "Licence public key is not the placeholder — safe to publish."
+
+    - name: Restore
+      run: dotnet restore BonniePDF.Signing/BonniePDF.Signing.csproj
+
+    - name: Build
+      run: dotnet build BonniePDF.Signing/BonniePDF.Signing.csproj --configuration Release --no-restore
+
+    - name: Pack (with symbols)
+      run: >
+        dotnet pack BonniePDF.Signing/BonniePDF.Signing.csproj
+        --configuration Release --no-build --output nupkgs
+        -p:IncludeSymbols=true -p:SymbolPackageFormat=snupkg
+        -p:ContinuousIntegrationBuild=true
+
+    - name: Push to NuGet
+      run: dotnet nuget push nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
