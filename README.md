@@ -52,8 +52,10 @@ BonniePDF Community License, which licenses the core library only.
   additional fee and is not sold separately. It covers both runtimes for the
   legal entities identified in the Order, with unlimited developers and signing
   operations.
-- **Rights to covered versions are perpetual.** Renewal is optional, and needed
-  only for versions released after the Updates Term and for support.
+- **Rights to covered versions are perpetual.** Website licences include an
+  annual updates-and-support subscription that renews automatically unless
+  cancelled; it is needed only for later versions and support, and cancelling it
+  never disables a covered version.
 
 Compliance is contractual, not technical. There are no keys to issue,
 rotate, or revoke, and no vendor key material to protect.
