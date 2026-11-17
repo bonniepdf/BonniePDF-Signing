@@ -10,10 +10,10 @@ are **zero runtime dependencies** - every cryptographic operation runs on the
 (`crypto.subtle`), so the same code runs in the browser, Node.js 18+, Bun, Deno,
 and serverless runtimes.
 
-> **Commercial add-on.** Signing is a paid module and is **not** part of the
+> **Included with every paid licence.** Signing is **not** part of the
 > Community-licensed `@bonniepdf/core`. Production use requires a signing
-> entitlement under the [Signing Add-On Agreement](LICENSE), which is included
-> with every paid core licence at no extra cost. A standard entitlement covers
+> licence under the [BonniePDF Commercial License Agreement](https://www.bonniepdf.dev/legal/commercial-license),
+> which covers signing at no extra cost. A paid licence covers
 > both runtimes for the named legal entities, with unlimited developers and
 > signing operations. There is no licence key, activation, or telemetry: the
 > package behaves identically whether or not you hold a licence, and

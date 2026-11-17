@@ -12,8 +12,10 @@ implementation. Agreeing the approach in an issue saves rework.
 
 ## Licensing of contributions
 
-This repository is published under the **BonniePDF Signing Add-On License
-Agreement 1.0** (see [LICENSE](LICENSE)). Production use is governed
+This repository is published under the **BonniePDF Signing Package Notice 1.0**
+(see [LICENSE](LICENSE)); the packages themselves are licensed by the
+**BonniePDF Commercial License Agreement**, which defines them as part of the
+Software. Production use is governed
 contractually rather than by any check in code — there is deliberately no
 licence key, activation call, or telemetry in these packages, and a contribution
 must not add one.

@@ -13,7 +13,7 @@ core packages.
 They add invisible and visible CMS/PAdES signatures, RFC 3161 timestamps, and
 PKCS#12 input. There is no licence key or entitlement check in the code: the
 packages behave identically for everyone, and production use is governed by the
-Signing Add-On Agreement rather than enforced in software.
+BonniePDF Commercial License Agreement rather than enforced in software.
 
 ## TypeScript
 
@@ -48,7 +48,7 @@ perpetual; annual renewal is optional for future versions and support.
 Compliance is contractual, not technical. There are no keys to issue,
 rotate, or revoke, and no vendor key material to protect.
 
-See [LICENSE](LICENSE) for the Signing Add-On Agreement,
+See [LICENSE](LICENSE) for the Signing Package Notice,
 [COMMERCIAL-LICENSE.txt](COMMERCIAL-LICENSE.txt) for incorporated standard
 commercial terms, and each package's `LICENSING.md` for the entitlement
 model.

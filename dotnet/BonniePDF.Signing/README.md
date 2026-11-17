@@ -11,10 +11,10 @@ third-party dependencies**: all cryptography uses the .NET platform
 This is the .NET counterpart of the npm package `@bonniepdf/signing`; the two
 ports produce the same signature structures.
 
-> **Commercial add-on.** Signing is a paid module and is **not** part of the
+> **Included with every paid licence.** Signing is **not** part of the
 > Community-licensed `BonniePDF` core. Production use requires a signing
-> entitlement under the [Signing Add-On Agreement](LICENSE), which is included
-> with every paid core licence at no extra cost. A standard entitlement covers
+> licence under the [BonniePDF Commercial License Agreement](https://www.bonniepdf.dev/legal/commercial-license),
+> which covers signing at no extra cost. A paid licence covers
 > both runtimes for the named legal entities, with unlimited developers and
 > signing operations. There is no licence key, activation, or telemetry: the
 > package behaves identically whether or not you hold a licence, and

@@ -10,7 +10,7 @@ Signing is **not** part of the Community-licensed core packages, and must not dr
 
 ## No licence enforcement in code — on purpose
 
-There is **no licence key, no entitlement check, and no vendor key material** anywhere in these packages. They behave identically for everyone. Production use is governed by the **Signing Add-On License Agreement 1.0** (see [`LICENSE`](LICENSE)) — contractually, not technically.
+There is **no licence key, no entitlement check, and no vendor key material** anywhere in these packages. They behave identically for everyone. Production use is governed by the **BonniePDF Commercial License Agreement**, which defines these packages as part of the Software — contractually, not technically. [`LICENSE`](LICENSE) is the short Signing Package Notice: it grants free evaluation and points at that agreement, because it has to bind people who download the package without an Order.
 
 **Do not add** a key check, activation call, telemetry ping, trial timer, or watermark. There are no keys to issue, rotate, or revoke, and that is the design — not an omission to correct.
 
