@@ -380,7 +380,11 @@ internal static class PdfIncrementalUpdate
     private static string InjectKey(string dictBody, string keyLine) =>
         "\n" + keyLine + Regex.Replace(dictBody, "^\n", string.Empty);
 
-    private static string InjectAnnot(string pageBody, int widgetId)
+    /// <summary>
+    /// Add a widget to a page's /Annots, merging if one already exists. Shared by
+    /// the signature and document-timestamp revisions.
+    /// </summary>
+    public static string InjectAnnot(string pageBody, int widgetId)
     {
         string refStr = $"{widgetId} 0 R";
         if (new Regex(@"/Annots\s*\[").IsMatch(pageBody))

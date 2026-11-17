@@ -359,8 +359,11 @@ function injectKey(dictBody: string, keyLine: string): string {
   return `\n${keyLine}${dictBody.replace(/^\n/, '')}`;
 }
 
-/** Add the widget to a page's `/Annots`, merging if one already exists. */
-function injectAnnot(pageBody: string, widgetId: number): string {
+/**
+ * Add a widget to a page's `/Annots`, merging if one already exists. Shared by
+ * the signature and document-timestamp revisions.
+ */
+export function injectAnnot(pageBody: string, widgetId: number): string {
   const ref = `${widgetId} 0 R`;
   if (/\/Annots\s*\[/.test(pageBody)) {
     // Merge into the existing inline array (BonniePDF writes it inline).

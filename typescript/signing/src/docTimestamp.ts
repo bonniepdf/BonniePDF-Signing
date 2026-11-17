@@ -14,6 +14,7 @@
  */
 import {
   appendRevision,
+  injectAnnot,
   injectContents,
   parsePdf,
   patchByteRange,
@@ -85,7 +86,7 @@ export async function appendDocumentTimestamp(
     },
     { id: acroFormId, body: `<<\n  /Fields [${fields.join(' ')}]\n  /SigFlags 3\n>>` },
     { id: info.rootId, body: `<<${catalogWithAcroForm(info.catalogBody, acroFormId)}>>` },
-    { id: info.targetPageId, body: `<<${withAnnot(info.targetPageBody, widgetId)}>>` },
+    { id: info.targetPageId, body: `<<${injectAnnot(info.targetPageBody, widgetId)}>>` },
   ];
 
   const withPlaceholders = appendRevision(document, objects, {
@@ -110,14 +111,4 @@ export async function appendDocumentTimestamp(
 function catalogWithAcroForm(catalogBody: string, acroFormId: number): string {
   const body = catalogBody.replace(/\s*\/AcroForm\s+\d+\s+0\s+R/g, '');
   return `\n  /AcroForm ${acroFormId} 0 R\n${body.replace(/^\n/, '')}`;
-}
-
-/** Add the widget to the page's `/Annots`, merging with any already present. */
-function withAnnot(pageBody: string, widgetId: number): string {
-  const ref = `${widgetId} 0 R`;
-  if (/\/Annots\s*\[/.test(pageBody)) {
-    const merged = pageBody.replace(/(\/Annots\s*\[)([^\]]*)\]/, (_m, open, inner) => `${open}${inner.trim()} ${ref}]`);
-    return `\n${merged.replace(/^\n/, '')}`;
-  }
-  return `\n  /Annots [${ref}]\n${pageBody.replace(/^\n/, '')}`;
 }

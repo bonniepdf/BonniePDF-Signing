@@ -94,7 +94,7 @@ internal static class DocumentTimestamp
             new()
             {
                 Id = info.TargetPageId,
-                Body = "<<" + WithAnnot(info.TargetPageBody, widgetId) + ">>",
+                Body = "<<" + PdfIncrementalUpdate.InjectAnnot(info.TargetPageBody, widgetId) + ">>",
             },
         };
 
@@ -123,20 +123,5 @@ internal static class DocumentTimestamp
     {
         string body = Regex.Replace(catalogBody, @"\s*/AcroForm\s+\d+\s+0\s+R", string.Empty);
         return $"\n  /AcroForm {acroFormId} 0 R\n" + body.TrimStart('\n');
-    }
-
-    /// <summary>Add the widget to the page's /Annots, merging with any already present.</summary>
-    private static string WithAnnot(string pageBody, int widgetId)
-    {
-        string reference = $"{widgetId} 0 R";
-        if (Regex.IsMatch(pageBody, @"/Annots\s*\["))
-        {
-            string merged = Regex.Replace(
-                pageBody,
-                @"(/Annots\s*\[)([^\]]*)\]",
-                m => m.Groups[1].Value + m.Groups[2].Value.Trim() + " " + reference + "]");
-            return "\n" + merged.TrimStart('\n');
-        }
-        return $"\n  /Annots [{reference}]\n" + pageBody.TrimStart('\n');
     }
 }
