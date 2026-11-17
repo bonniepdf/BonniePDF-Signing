@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using BonniePDF;
 using BonniePDF.Elements.Text;
 using BonniePDF.Signing;
+using BonniePDF.Signing.Http;
 using Xunit;
 
 namespace BonniePDF.Signing.Tests;
@@ -207,13 +208,14 @@ public class SigningTests
         bool called = false;
         byte[]? capturedRequest = null;
 
-        Task<byte[]> Transport(string url, byte[] requestDer, System.Threading.CancellationToken ct)
+        Task<SigningHttpResponse> Transport(SigningHttpRequest request, System.Threading.CancellationToken ct)
         {
             called = true;
-            capturedRequest = requestDer;
-            // Return bytes that are not a valid TimeStampResp so ProcessResponse throws -
-            // we only need to assert the request path ran and produced a DER request.
-            return Task.FromResult(new byte[] { 0x30, 0x00 });
+            capturedRequest = request.Body;
+            // Return bytes that are not a valid TimeStampResp so token extraction
+            // throws - we only need to assert the request path ran and produced a
+            // DER request.
+            return Task.FromResult(new SigningHttpResponse { Status = 200, Body = [0x30, 0x00] });
         }
 
         await Assert.ThrowsAnyAsync<Exception>(() => PdfSigner.SignAsync(MakePdf(), new SignatureSettings

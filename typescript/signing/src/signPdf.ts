@@ -1,7 +1,7 @@
 /**
  * Public entry point: sign a BonniePDF-generated PDF.
  */
-import { SignatureSettings, normalizeSettings } from './SignatureSettings';
+import { SignatureSettings, normalizeSettings, isLongTermLevel, isPadesLevel } from './SignatureSettings';
 import { getAlgorithmParams } from './SigningAlgorithm';
 import { pemToDer } from './pem';
 import { buildSignedData } from './cms';
@@ -9,6 +9,10 @@ import { requestTimestamp } from './timestamp';
 import { parsePkcs12 } from './pkcs12';
 import { buildAppearanceStream } from './appearance';
 import { parsePdf, buildIncrementalUpdate, patchByteRange, injectContents, pdfDate, VisibleSignature } from './pdf';
+import { defaultHttpClient } from './http';
+import { buildDssRevision, needsEsicExtension } from './dss';
+import { appendDocumentTimestamp } from './docTimestamp';
+import { collectValidationMaterial } from './validation';
 
 /**
  * Embed a digital signature into a PDF produced by `@bonniepdf/core`, applied as
@@ -41,7 +45,7 @@ export async function signPdf(pdfBytes: Uint8Array, settings: SignatureSettings)
   ]);
 
   const signingTime = config.signingTime ?? new Date();
-  const pades = config.padesLevel === 'b-b' || config.padesLevel === 'b-t';
+  const pades = isPadesLevel(config.padesLevel);
   const subFilter = pades ? 'ETSI.CAdES.detached' : 'adbe.pkcs7.detached';
 
   // Visible appearance (optional).
@@ -89,7 +93,7 @@ export async function signPdf(pdfBytes: Uint8Array, settings: SignatureSettings)
         })
     : undefined;
 
-  const cms = await buildSignedData({
+  const { cms, timestampToken } = await buildSignedData({
     params,
     messageDigest,
     certDer,
@@ -102,8 +106,42 @@ export async function signPdf(pdfBytes: Uint8Array, settings: SignatureSettings)
 
   // 5. Inject the hex-encoded envelope into /Contents.
   injectContents(withPlaceholders, contentsStart, contentsEnd, cms);
-  return withPlaceholders;
+
+  if (!isLongTermLevel(config.padesLevel)) return withPlaceholders;
+
+  // 6. B-LT: append the validation material as a Document Security Store, in
+  // its own revision so the signature's byte range stays untouched.
+  const httpClient = config.httpClient ?? defaultHttpClient;
+  const material = await collectValidationMaterial({
+    certDer,
+    chainDer,
+    httpClient,
+    supplied: config.validationMaterial,
+    fetchRevocation: config.fetchRevocation,
+    timestampToken,
+  });
+  config.onValidationMaterial?.(material);
+
+  let out = await buildDssRevision(withPlaceholders, {
+    material,
+    // The /VRI key names the signature by the bytes of its /Contents entry,
+    // padding included - which is exactly the span we just wrote into.
+    signatureContents: withPlaceholders.slice(contentsStart + 1, contentsEnd - 1),
+    time: signingTime,
+    declareEsicExtension: needsEsicExtension(pdfBytes),
+  });
+
+  if (config.padesLevel !== 'b-lta') return out;
+
+  // 7. B-LTA: a document timestamp over everything above, DSS included.
+  out = await appendDocumentTimestamp(out, {
+    timestampUrl: config.documentTimestampUrl ?? config.timestampUrl!,
+    hashName: params.hashName as 'SHA-256' | 'SHA-384' | 'SHA-512',
+    httpClient: config.httpClient,
+  });
+  return out;
 }
+
 
 /** Derive default visible-appearance text from the signature metadata. */
 function defaultAppearanceLines(config: SignatureSettings, signingTime: Date): string[] {

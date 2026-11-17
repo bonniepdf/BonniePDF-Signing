@@ -5,13 +5,16 @@ using System.Threading;
 using System.Threading.Tasks;
 using BonniePDF.Signing.Cms;
 using BonniePDF.Signing.Pdf;
+using BonniePDF.Signing.Validation;
 
 namespace BonniePDF.Signing;
 
 /// <summary>
 /// Signs a BonniePDF-generated PDF by appending a signature revision (a minimal
-/// incremental update). Supports invisible and visible signatures, PAdES
-/// baseline profiles (B-B / B-T), and RFC 3161 timestamps.
+/// incremental update). Supports invisible and visible signatures, the PAdES
+/// baseline profiles B-B, B-T, B-LT and B-LTA, RFC 3161 timestamps, and the
+/// long-term validation material and document timestamps the archival levels
+/// carry.
 ///
 /// The signer operates on the finished <c>byte[]</c> output of
 /// <c>Document.GenerateBytes()</c> / <c>GenerateBytesAsync()</c>; it has no
@@ -21,7 +24,7 @@ public static class PdfSigner
 {
     /// <summary>
     /// Sign synchronously. Throws if a timestamp is configured (timestamping
-    /// needs network I/O - use <see cref="SignAsync"/> for PAdES B-T).
+    /// needs network I/O - use <see cref="SignAsync"/> for PAdES B-T and above).
     /// </summary>
     public static byte[] Sign(byte[] pdfBytes, SignatureSettings settings)
     {
@@ -82,11 +85,43 @@ public static class PdfSigner
             PdfIncrementalUpdate.ByteRangeResult br = PdfIncrementalUpdate.PatchByteRange(withPlaceholders);
 
             // 3. Build the detached CMS envelope (with optional timestamp).
-            byte[] cms = await CmsBuilder.BuildAsync(br.Signed, cert, chain, settings, ct).ConfigureAwait(false);
+            CmsBuilder.CmsResult cms = await CmsBuilder.BuildAsync(br.Signed, cert, chain, settings, ct).ConfigureAwait(false);
 
             // 4. Inject the CMS into /Contents.
-            PdfIncrementalUpdate.InjectContents(withPlaceholders, br.ContentsStart, br.ContentsEnd, cms);
-            return withPlaceholders;
+            PdfIncrementalUpdate.InjectContents(withPlaceholders, br.ContentsStart, br.ContentsEnd, cms.Cms);
+
+            if (!settings.IsLongTerm) return withPlaceholders;
+
+            // 5. B-LT: append the validation material as a Document Security
+            // Store, in its own revision so the signature's byte range is
+            // untouched and stays valid.
+            var chainDer = new List<byte[]>(chain.Count);
+            foreach (X509Certificate2 c in chain) chainDer.Add(c.RawData);
+
+            ValidationMaterial material = await ValidationMaterialCollector.CollectAsync(
+                cert.RawData, chainDer, settings.HttpClient, settings.ValidationMaterial,
+                settings.FetchRevocation, cms.TimestampToken, ct).ConfigureAwait(false);
+            settings.OnValidationMaterial?.Invoke(material);
+
+            // The /VRI key names the signature by the bytes of its /Contents
+            // entry, padding included - which is exactly the span just written.
+            var contents = new byte[br.ContentsEnd - br.ContentsStart - 2];
+            Buffer.BlockCopy(withPlaceholders, br.ContentsStart + 1, contents, 0, contents.Length);
+
+            byte[] result = DssBuilder.Append(
+                withPlaceholders, material, contents, signingTime,
+                PdfIncrementalUpdate.NeedsEsicExtension(pdfBytes));
+
+            if (settings.PadesLevel != PadesLevel.BLTA) return result;
+
+            // 6. B-LTA: a document timestamp over everything above, DSS included.
+            return await DocumentTimestamp.AppendAsync(
+                result,
+                settings.DocumentTimestampUrl ?? settings.TimestampUrl,
+                SigningAlgorithmInfo.HashName(settings.Algorithm),
+                settings.HttpClient,
+                settings.Appearance?.Page ?? 0,
+                ct).ConfigureAwait(false);
         }
         finally
         {

@@ -91,10 +91,19 @@ export interface PdfInfo {
   prevStartxref: number;
 }
 
-/** Locate `id 0 obj << ... >>` and return the dictionary body text. */
+/**
+ * Locate `id 0 obj << ... >>` and return the dictionary body text.
+ *
+ * Takes the **last** definition in the file, not the first: once a document
+ * carries incremental updates, an object it overrode appears more than once and
+ * the latest revision is the one in force. Reading the first would hand back a
+ * catalog without the `/AcroForm` a previous revision added, and the next
+ * revision would silently drop the signature field.
+ */
 function readObjectDict(text: string, id: number): string {
-  const marker = new RegExp(`(?:^|[^0-9])${id} 0 obj`);
-  const m = marker.exec(text);
+  const marker = new RegExp(`(?:^|[^0-9])${id} 0 obj`, 'g');
+  let m: RegExpExecArray | null = null;
+  for (let hit = marker.exec(text); hit; hit = marker.exec(text)) m = hit;
   if (!m) throw new Error(`object ${id} not found`);
   const objStart = m.index + m[0].length;
   const dictStart = text.indexOf('<<', objStart);
@@ -113,6 +122,28 @@ function readObjectDict(text: string, id: number): string {
     }
   }
   return text.slice(dictStart + 2, i - 1);
+}
+
+/**
+ * The raw dictionary body of an object, by number, from the latest revision
+ * that defines it. Exposed so the DSS and document-timestamp revisions can read
+ * structures an earlier revision of this package wrote.
+ */
+export function readObjectBody(bytes: Uint8Array, id: number): string {
+  return readObjectDict(latin1Decode(bytes), id);
+}
+
+/** Parse the `N 0 R` object number for a named key, or undefined when absent. */
+export function readOptionalRef(dictBody: string, key: string): number | undefined {
+  const m = new RegExp(`${key}\\s*(\\d+)\\s+0\\s+R`).exec(dictBody);
+  return m ? parseInt(m[1], 10) : undefined;
+}
+
+/** Every `N 0 R` reference inside a named array, e.g. an AcroForm's `/Fields`. */
+export function readRefArray(dictBody: string, key: string): string[] {
+  const m = new RegExp(`${key}\\s*\\[([^\\]]*)\\]`).exec(dictBody);
+  if (!m) return [];
+  return [...m[1].matchAll(/(\d+)\s+0\s+R/g)].map(x => `${x[1]} 0 R`);
 }
 
 /** Parse the `N 0 R` object number for a named key from a dictionary body. */
@@ -225,42 +256,86 @@ export function buildIncrementalUpdate(
   const catalogDict = `<<${injectKey(info.catalogBody, `  /AcroForm ${acroFormId} 0 R\n`)}>>`;
   const pageDict = `<<${injectAnnot(info.targetPageBody, widgetId)}>>`;
 
-  // Each object is appended in turn; record its byte offset for the xref.
-  const offsets = new Map<number, number>();
-  let appended = '';
-  const startBase = original.length;
-  const writeObj = (id: number, body: string) => {
-    offsets.set(id, startBase + appended.length);
-    appended += `${id} 0 obj\n${body}\nendobj\n`;
-  };
-
-  // Original ends in `%%EOF` with no trailing newline; separate cleanly.
-  appended += '\n';
-  writeObj(sigId, sigDict);
-  writeObj(widgetId, widgetDict);
-  writeObj(acroFormId, acroFormDict);
+  const objects: RevisionObject[] = [
+    { id: sigId, body: sigDict },
+    { id: widgetId, body: widgetDict },
+    { id: acroFormId, body: acroFormDict },
+  ];
   if (visible) {
     const w = visible.rect[2];
     const h = visible.rect[3];
     const content = visible.contentStream;
-    writeObj(
-      apId,
-      `<< /Type /XObject /Subtype /Form /FormType 1 /BBox [0 0 ${w} ${h}]` +
+    objects.push({
+      id: apId,
+      body:
+        `<< /Type /XObject /Subtype /Form /FormType 1 /BBox [0 0 ${w} ${h}]` +
         ` /Resources << /Font << /Helv ${fontId} 0 R >> >> /Length ${latin1Encode(content).length} >>\n` +
-        `stream\n${content}\nendstream`
-    );
-    writeObj(fontId, `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`);
+        `stream\n${content}\nendstream`,
+    });
+    objects.push({
+      id: fontId,
+      body: `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`,
+    });
   }
-  writeObj(info.rootId, catalogDict);
-  writeObj(info.targetPageId, pageDict);
+  objects.push({ id: info.rootId, body: catalogDict });
+  objects.push({ id: info.targetPageId, body: pageDict });
 
-  // New classic xref section covering exactly the updated/added objects.
+  return appendRevision(original, objects, {
+    rootId: info.rootId,
+    newSize,
+    prevStartxref: info.prevStartxref,
+    idArray: info.idArray,
+  });
+}
+
+/** One object written into an appended revision. */
+export interface RevisionObject {
+  /** Object number. Reusing an existing number overrides that object. */
+  id: number;
+  /** Everything between `N 0 obj` and `endobj`, dictionary and any stream. */
+  body: string;
+}
+
+/** Trailer facts an appended revision needs. */
+export interface RevisionTrailer {
+  rootId: number;
+  /** Trailer `/Size`: one past the highest object number now in use. */
+  newSize: number;
+  /** Byte offset of the previous `startxref`, written as `/Prev`. */
+  prevStartxref: number;
+  /** Verbatim `/ID [<..> <..>]` value carried forward, or undefined. */
+  idArray?: string;
+}
+
+/**
+ * Append one incremental revision: the given objects, a classic cross-reference
+ * section covering exactly them, and a trailer chained to the previous one.
+ *
+ * Shared by every revision this package writes - the signature, the DSS, and the
+ * document timestamp - so all three agree on offsets, the `/Prev` chain, and the
+ * leading newline that separates the revision from the `%%EOF` before it.
+ */
+export function appendRevision(
+  original: Uint8Array,
+  objects: readonly RevisionObject[],
+  trailer: RevisionTrailer
+): Uint8Array {
+  const offsets = new Map<number, number>();
+  const startBase = original.length;
+  // The document ends in `%%EOF` with no trailing newline; separate cleanly.
+  let appended = '\n';
+
+  for (const object of objects) {
+    offsets.set(object.id, startBase + appended.length);
+    appended += `${object.id} 0 obj\n${object.body}\nendobj\n`;
+  }
+
   const xrefOffset = startBase + appended.length;
   appended += buildXref(offsets);
 
-  const trailerParts = [`/Size ${newSize}`, `/Root ${info.rootId} 0 R`, `/Prev ${info.prevStartxref}`];
-  if (info.idArray) trailerParts.push(`/ID ${info.idArray}`);
-  appended += `trailer\n<< ${trailerParts.join(' ')} >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  const parts = [`/Size ${trailer.newSize}`, `/Root ${trailer.rootId} 0 R`, `/Prev ${trailer.prevStartxref}`];
+  if (trailer.idArray) parts.push(`/ID ${trailer.idArray}`);
+  appended += `trailer\n<< ${parts.join(' ')} >>\nstartxref\n${xrefOffset}\n%%EOF`;
 
   const appendedBytes = latin1Encode(appended);
   const out = new Uint8Array(original.length + appendedBytes.length);

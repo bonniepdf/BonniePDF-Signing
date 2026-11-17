@@ -23,6 +23,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The throwaway PKI is shared with the sample generator, so the CI
+         validation gate signs with exactly the PKI these tests assert against. -->
+    <Compile Include="..\shared\TestPki.cs" Link="TestPki.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- BonniePDF core is referenced by the tests only, to generate a PDF to sign. -->
     <ProjectReference Include="..\..\..\BonniePDF-NET\BonniePDF\BonniePDF.csproj" />
     <ProjectReference Include="..\BonniePDF.Signing\BonniePDF.Signing.csproj" />

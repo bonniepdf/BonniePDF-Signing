@@ -90,11 +90,22 @@ internal static class PdfIncrementalUpdate
         public string ContentStream;
     }
 
+    /// <summary>
+    /// Locate <c>id 0 obj &lt;&lt; ... &gt;&gt;</c> and return the dictionary body text.
+    /// </summary>
+    /// <remarks>
+    /// Takes the <b>last</b> definition in the file, not the first: once a
+    /// document carries incremental updates, an object it overrode appears more
+    /// than once and the latest revision is the one in force. Reading the first
+    /// would hand back a catalog without the /AcroForm a previous revision
+    /// added, and the next revision would silently drop the signature field.
+    /// </remarks>
     private static string ReadObjectDict(string text, int id)
     {
         var marker = new Regex($"(?:^|[^0-9]){id} 0 obj");
-        var m = marker.Match(text);
-        if (!m.Success) throw new InvalidOperationException($"object {id} not found");
+        Match m = null;
+        for (Match hit = marker.Match(text); hit.Success; hit = hit.NextMatch()) m = hit;
+        if (m is null) throw new InvalidOperationException($"object {id} not found");
         int objStart = m.Index + m.Length;
         int dictStart = text.IndexOf("<<", objStart, StringComparison.Ordinal);
         if (dictStart < 0) throw new InvalidOperationException($"object {id}: no dictionary");
@@ -193,48 +204,151 @@ internal static class PdfIncrementalUpdate
         string catalogDict = "<<" + InjectKey(info.CatalogBody, $"  /AcroForm {acroFormId} 0 R\n") + ">>";
         string pageDict = "<<" + InjectAnnot(info.TargetPageBody, widgetId) + ">>";
 
-        var offsets = new Dictionary<int, long>();
-        var appended = new StringBuilder();
-        long startBase = original.Length;
-
-        void WriteObj(int id, string body)
+        var objects = new List<RevisionObject>
         {
-            offsets[id] = startBase + appended.Length;
-            appended.Append($"{id} 0 obj\n{body}\nendobj\n");
-        }
-
-        // Original ends in `%%EOF` with no trailing newline; separate cleanly.
-        appended.Append('\n');
-        WriteObj(sigId, sigDict);
-        WriteObj(widgetId, widgetDict);
-        WriteObj(acroFormId, acroFormDict);
+            new() { Id = sigId, Body = sigDict },
+            new() { Id = widgetId, Body = widgetDict },
+            new() { Id = acroFormId, Body = acroFormDict },
+        };
         if (visible != null)
         {
             double w = visible.Rect[2];
             double h = visible.Rect[3];
             string content = visible.ContentStream;
             int length = Latin1Encode(content).Length;
-            WriteObj(apId,
-                $"<< /Type /XObject /Subtype /Form /FormType 1 /BBox [0 0 {w.ToString(CultureInfo.InvariantCulture)} {h.ToString(CultureInfo.InvariantCulture)}]" +
-                $" /Resources << /Font << /Helv {fontId} 0 R >> >> /Length {length} >>\n" +
-                $"stream\n{content}\nendstream");
-            WriteObj(fontId, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+            objects.Add(new RevisionObject
+            {
+                Id = apId,
+                Body =
+                    $"<< /Type /XObject /Subtype /Form /FormType 1 /BBox [0 0 {w.ToString(CultureInfo.InvariantCulture)} {h.ToString(CultureInfo.InvariantCulture)}]" +
+                    $" /Resources << /Font << /Helv {fontId} 0 R >> >> /Length {length} >>\n" +
+                    $"stream\n{content}\nendstream",
+            });
+            objects.Add(new RevisionObject
+            {
+                Id = fontId,
+                Body = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+            });
         }
-        WriteObj(info.RootId, catalogDict);
-        WriteObj(info.TargetPageId, pageDict);
+        objects.Add(new RevisionObject { Id = info.RootId, Body = catalogDict });
+        objects.Add(new RevisionObject { Id = info.TargetPageId, Body = pageDict });
+
+        return AppendRevision(original, objects, new RevisionTrailer
+        {
+            RootId = info.RootId,
+            NewSize = newSize,
+            PrevStartxref = info.PrevStartxref,
+            IdArray = info.IdArray,
+        });
+    }
+
+    /// <summary>One object written into an appended revision.</summary>
+    public sealed class RevisionObject
+    {
+        /// <summary>Object number. Reusing an existing number overrides that object.</summary>
+        public int Id { get; init; }
+
+        /// <summary>Everything between <c>N 0 obj</c> and <c>endobj</c>.</summary>
+        public string Body { get; init; }
+    }
+
+    /// <summary>Trailer facts an appended revision needs.</summary>
+    public sealed class RevisionTrailer
+    {
+        public int RootId { get; init; }
+
+        /// <summary>Trailer /Size: one past the highest object number now in use.</summary>
+        public int NewSize { get; init; }
+
+        /// <summary>Byte offset of the previous startxref, written as /Prev.</summary>
+        public long PrevStartxref { get; init; }
+
+        /// <summary>Verbatim /ID value carried forward, or null.</summary>
+        public string IdArray { get; init; }
+    }
+
+    /// <summary>
+    /// Append one incremental revision: the given objects, a classic
+    /// cross-reference section covering exactly them, and a trailer chained to
+    /// the previous one.
+    /// </summary>
+    /// <remarks>
+    /// Shared by every revision this package writes - the signature, the DSS,
+    /// and the document timestamp - so all three agree on offsets, the /Prev
+    /// chain, and the leading newline that separates the revision from the
+    /// %%EOF before it.
+    /// </remarks>
+    public static byte[] AppendRevision(byte[] original, IReadOnlyList<RevisionObject> objects, RevisionTrailer trailer)
+    {
+        var offsets = new Dictionary<int, long>();
+        var appended = new StringBuilder();
+        long startBase = original.Length;
+
+        // The document ends in `%%EOF` with no trailing newline; separate cleanly.
+        appended.Append('\n');
+        foreach (RevisionObject obj in objects)
+        {
+            offsets[obj.Id] = startBase + appended.Length;
+            appended.Append($"{obj.Id} 0 obj\n{obj.Body}\nendobj\n");
+        }
 
         long xrefOffset = startBase + appended.Length;
         appended.Append(BuildXref(offsets));
 
-        var trailerParts = new List<string> { $"/Size {newSize}", $"/Root {info.RootId} 0 R", $"/Prev {info.PrevStartxref}" };
-        if (!string.IsNullOrEmpty(info.IdArray)) trailerParts.Add($"/ID {info.IdArray}");
-        appended.Append($"trailer\n<< {string.Join(" ", trailerParts)} >>\nstartxref\n{xrefOffset}\n%%EOF");
+        var parts = new List<string>
+        {
+            $"/Size {trailer.NewSize}",
+            $"/Root {trailer.RootId} 0 R",
+            $"/Prev {trailer.PrevStartxref}",
+        };
+        if (!string.IsNullOrEmpty(trailer.IdArray)) parts.Add($"/ID {trailer.IdArray}");
+        appended.Append($"trailer\n<< {string.Join(" ", parts)} >>\nstartxref\n{xrefOffset}\n%%EOF");
 
         byte[] appendedBytes = Latin1Encode(appended.ToString());
         var outBytes = new byte[original.Length + appendedBytes.Length];
         Buffer.BlockCopy(original, 0, outBytes, 0, original.Length);
         Buffer.BlockCopy(appendedBytes, 0, outBytes, original.Length, appendedBytes.Length);
         return outBytes;
+    }
+
+    /// <summary>
+    /// The raw dictionary body of an object, by number, from the latest
+    /// revision that defines it. Exposed so the DSS and document-timestamp
+    /// revisions can read structures an earlier revision wrote.
+    /// </summary>
+    public static string ReadObjectBody(byte[] bytes, int id) => ReadObjectDict(Latin1Decode(bytes), id);
+
+    /// <summary>Object number for a named key, or null when the key is absent.</summary>
+    public static int? ReadOptionalRef(string dictBody, string key)
+    {
+        Match m = new Regex($@"{Regex.Escape(key)}\s*(\d+)\s+0\s+R").Match(dictBody);
+        return m.Success ? int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : null;
+    }
+
+    /// <summary>Every <c>N 0 R</c> reference inside a named array, e.g. an AcroForm's /Fields.</summary>
+    public static List<string> ReadRefArray(string dictBody, string key)
+    {
+        Match m = new Regex($@"{Regex.Escape(key)}\s*\[([^\]]*)\]").Match(dictBody);
+        if (!m.Success) return [];
+        return Regex.Matches(m.Groups[1].Value, @"(\d+)\s+0\s+R")
+            .Select(x => $"{x.Groups[1].Value} 0 R")
+            .ToList();
+    }
+
+    /// <summary>The PDF header version, e.g. "1.7", or null when the header is unusual.</summary>
+    public static string PdfHeaderVersion(byte[] bytes)
+    {
+        string head = Latin1Decode(bytes[..Math.Min(bytes.Length, 16)]);
+        Match m = new Regex(@"^%PDF-(\d+\.\d+)").Match(head);
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
+    /// <summary>True when the document predates PDF 2.0 and so needs the ESIC extension.</summary>
+    public static bool NeedsEsicExtension(byte[] bytes)
+    {
+        string version = PdfHeaderVersion(bytes);
+        if (version is null) return true;
+        return double.Parse(version, CultureInfo.InvariantCulture) < 2;
     }
 
     private static string BuildSigDict(SignatureDictMeta meta)

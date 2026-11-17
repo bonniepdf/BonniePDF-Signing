@@ -12,13 +12,9 @@
  */
 import * as der from './asn1/der';
 import { Oids } from './asn1/oids';
+import { HttpClient, defaultHttpClient, fetchBytes } from './http';
 
-/** A minimal HTTP transport: POST `body` to `url`, return the response bytes. */
-export type HttpClient = (
-  url: string,
-  body: Uint8Array,
-  headers: Record<string, string>
-) => Promise<{ status: number; body: Uint8Array }>;
+export type { HttpClient };
 
 export interface TimestampOptions {
   /** TSA endpoint (RFC 3161 over HTTP). */
@@ -33,16 +29,6 @@ const HASH_OID: Record<string, string> = {
   'SHA-256': Oids.sha256,
   'SHA-384': Oids.sha384,
   'SHA-512': Oids.sha512,
-};
-
-/** Default transport built on the global `fetch`. */
-const defaultHttpClient: HttpClient = async (url, body, headers) => {
-  if (typeof fetch !== 'function') {
-    throw new Error('no global fetch available; supply settings.httpClient for timestamping');
-  }
-  const res = await fetch(url, { method: 'POST', headers, body: body as BufferSource });
-  const buf = new Uint8Array(await res.arrayBuffer());
-  return { status: res.status, body: buf };
 };
 
 /**
@@ -96,11 +82,18 @@ export async function requestTimestamp(data: Uint8Array, options: TimestampOptio
   const nonce = crypto.getRandomValues(new Uint8Array(16));
   const req = buildTimeStampReq(imprint, hashName, nonce);
 
-  const httpClient = options.httpClient ?? defaultHttpClient;
-  const { status, body } = await httpClient(options.url, req, {
-    'Content-Type': 'application/timestamp-query',
-    Accept: 'application/timestamp-reply',
-  });
-  if (status < 200 || status >= 300) throw new Error(`TSA HTTP ${status}`);
+  const body = await fetchBytes(
+    options.httpClient ?? defaultHttpClient,
+    {
+      url: options.url,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/timestamp-query',
+        Accept: 'application/timestamp-reply',
+      },
+      body: req,
+    },
+    'timestamp request'
+  );
   return extractTokenFromResponse(body);
 }

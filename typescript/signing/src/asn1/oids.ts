@@ -20,6 +20,24 @@ export const Oids = {
   // RFC 3161 signature-timestamp unsigned attribute (CAdES/PAdES B-T).
   signatureTimeStampToken: '1.2.840.113549.1.9.16.2.14',
 
+  // Certificate extensions (RFC 5280) used to find revocation information.
+  authorityInfoAccess: '1.3.6.1.5.5.7.1.1',
+  crlDistributionPoints: '2.5.29.31',
+  // AIA access methods (RFC 5280 §4.2.2.1).
+  adOcsp: '1.3.6.1.5.5.7.48.1',
+  adCaIssuers: '1.3.6.1.5.5.7.48.2',
+
+  // OCSP (RFC 6960).
+  ocspBasicResponse: '1.3.6.1.5.5.7.48.1.1',
+  ocspNonce: '1.3.6.1.5.5.7.48.1.2',
+
+  // RFC 3161 timestamp token content type (id-ct-TSTInfo).
+  tstInfo: '1.2.840.113549.1.9.16.1.4',
+
+  // SHA-1, still the mandated digest for an OCSP CertID (RFC 6960 §4.1.1) and
+  // for the DSS /VRI key (ETSI EN 319 142-1). Not used to sign anything.
+  sha1: '1.3.14.3.2.26',
+
   // Digest algorithms (NIST)
   sha256: '2.16.840.1.101.3.4.2.1',
   sha384: '2.16.840.1.101.3.4.2.2',

@@ -25,6 +25,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="BonniePDF.Signing.Tests" />
+    <!-- The sample generator compiles the shared test PKI, which builds DER
+         with the internal Asn1 helpers. -->
+    <InternalsVisibleTo Include="BonniePDF.Signing.SampleGen" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,10 +1,10 @@
 using System;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using BonniePDF.Signing.Asn1;
+using BonniePDF.Signing.Http;
 
 namespace BonniePDF.Signing.Timestamp;
 
@@ -20,8 +20,6 @@ internal static class Rfc3161Client
 {
     /// <summary>CMS unsigned-attribute OID for the signature timestamp.</summary>
     public const string SignatureTimeStampOid = "1.2.840.113549.1.9.16.2.14";
-
-    private static readonly HttpClient SharedHttp = new();
 
     private static string HashOid(HashAlgorithmName hashName)
     {
@@ -75,27 +73,36 @@ internal static class Rfc3161Client
         return outp;
     }
 
-    public static async Task<byte[]> GetTokenAsync(
-        byte[] signatureValue, HashAlgorithmName hashName, SignatureSettings settings, CancellationToken ct)
+    public static Task<byte[]> GetTokenAsync(
+        byte[] signatureValue, HashAlgorithmName hashName, SignatureSettings settings, CancellationToken ct) =>
+        GetTokenForDataAsync(signatureValue, hashName, settings.TimestampUrl, settings.HttpClient, ct);
+
+    /// <summary>
+    /// Request a timestamp over arbitrary data: the signature value for a
+    /// signature timestamp, or the whole covered byte range for a document
+    /// timestamp.
+    /// </summary>
+    public static async Task<byte[]> GetTokenForDataAsync(
+        byte[] data, HashAlgorithmName hashName, string url, SigningHttpClient httpClient, CancellationToken ct)
     {
-        byte[] imprint = Hash(signatureValue, hashName);
+        byte[] imprint = Hash(data, hashName);
         var nonce = new byte[16];
         RandomNumberGenerator.Fill(nonce);
         byte[] request = BuildRequest(imprint, hashName, nonce);
 
-        byte[] response = settings.HttpClient != null
-            ? await settings.HttpClient(settings.TimestampUrl, request, ct).ConfigureAwait(false)
-            : await PostAsync(settings.TimestampUrl, request, ct).ConfigureAwait(false);
+        byte[] response = await SigningHttp.FetchAsync(
+            httpClient,
+            new SigningHttpRequest
+            {
+                Url = url,
+                Method = HttpMethod.Post,
+                Body = request,
+                ContentType = "application/timestamp-query",
+                Accept = "application/timestamp-reply",
+            },
+            "timestamp request",
+            ct).ConfigureAwait(false);
 
         return ExtractToken(response);
-    }
-
-    private static async Task<byte[]> PostAsync(string url, byte[] requestBytes, CancellationToken ct)
-    {
-        using var content = new ByteArrayContent(requestBytes);
-        content.Headers.ContentType = new MediaTypeHeaderValue("application/timestamp-query");
-        using HttpResponseMessage response = await SharedHttp.PostAsync(url, content, ct).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
     }
 }

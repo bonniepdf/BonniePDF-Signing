@@ -16,7 +16,7 @@ async function buildRsaCms(message: Uint8Array) {
   const params = getAlgorithmParams(SigningAlgorithm.Sha256Rsa);
   const privateKey = await crypto.subtle.importKey('pkcs8', pemToDer(keyRsa), params.importParams, false, ['sign']);
   const messageDigest = new Uint8Array(await crypto.subtle.digest('SHA-256', message));
-  const cms = await buildSignedData({
+  const { cms } = await buildSignedData({
     params,
     messageDigest,
     certDer: pemToDer(certRsa),

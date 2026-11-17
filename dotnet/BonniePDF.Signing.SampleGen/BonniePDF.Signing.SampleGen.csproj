@@ -13,6 +13,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The throwaway PKI is shared with the test project, so the validation
+         gate signs with exactly the PKI the tests assert against. -->
+    <Compile Include="..\shared\TestPki.cs" Link="TestPki.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\BonniePDF-NET\BonniePDF\BonniePDF.csproj" />
     <ProjectReference Include="..\BonniePDF.Signing\BonniePDF.Signing.csproj" />
   </ItemGroup>

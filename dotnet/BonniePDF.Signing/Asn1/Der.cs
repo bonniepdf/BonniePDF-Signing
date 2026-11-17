@@ -87,6 +87,68 @@ internal static class Der
 
     public static byte[] Boolean(bool value) => new byte[] { 0x01, 0x01, (byte)(value ? 0xff : 0x00) };
 
+    /// <summary>Context-specific constructed <c>[n]</c> wrapper.</summary>
+    public static byte[] ContextConstructed(int n, byte[] value) => Tlv((byte)(0xa0 | n), value);
+
+    /// <summary>SET of the given pre-encoded children (order preserved).</summary>
+    public static byte[] Set(params byte[][] children) => Tlv(0x31, Concat(children));
+
+    /// <summary>
+    /// GeneralizedTime <c>YYYYMMDDHHMMSSZ</c>, as RFC 3161 TSTInfo and RFC 6960
+    /// OCSP responses use.
+    /// </summary>
+    public static byte[] GeneralizedTime(DateTimeOffset date)
+    {
+        DateTimeOffset utc = date.ToUniversalTime();
+        string text = utc.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture) + "Z";
+        return Tlv(0x18, System.Text.Encoding.ASCII.GetBytes(text));
+    }
+
+    /// <summary>UTCTime <c>YYMMDDHHMMSSZ</c>, valid for 1950-2049.</summary>
+    public static byte[] UtcTime(DateTimeOffset date)
+    {
+        DateTimeOffset utc = date.ToUniversalTime();
+        string text = utc.ToString("yyMMddHHmmss", CultureInfo.InvariantCulture) + "Z";
+        return Tlv(0x17, System.Text.Encoding.ASCII.GetBytes(text));
+    }
+
+    /// <summary>ENUMERATED, as used by an OCSP responseStatus.</summary>
+    public static byte[] Enumerated(int value) => Tlv(0x0a, new[] { (byte)value });
+
+    /// <summary>The full TLV byte slice (tag through last content byte) of a node.</summary>
+    public static byte[] NodeBytes(byte[] bytes, Node node)
+    {
+        var outp = new byte[node.End - node.Start];
+        Buffer.BlockCopy(bytes, node.Start, outp, 0, outp.Length);
+        return outp;
+    }
+
+    /// <summary>The content bytes of a node, without its tag and length.</summary>
+    public static byte[] Content(byte[] bytes, Node node)
+    {
+        var outp = new byte[node.ContentEnd - node.ContentStart];
+        Buffer.BlockCopy(bytes, node.ContentStart, outp, 0, outp.Length);
+        return outp;
+    }
+
+    /// <summary>Decode an OBJECT IDENTIFIER's content bytes to dotted-decimal.</summary>
+    public static string OidString(byte[] bytes, Node node)
+    {
+        int length = node.ContentEnd - node.ContentStart;
+        if (length == 0) return string.Empty;
+
+        byte first = bytes[node.ContentStart];
+        var parts = new List<long> { first / 40, first % 40 };
+        long value = 0;
+        for (int i = 1; i < length; i++)
+        {
+            byte b = bytes[node.ContentStart + i];
+            value = (value * 128) + (b & 0x7f);
+            if ((b & 0x80) == 0) { parts.Add(value); value = 0; }
+        }
+        return string.Join(".", parts);
+    }
+
     [StructLayout(LayoutKind.Auto)]
     public readonly struct Node
     {

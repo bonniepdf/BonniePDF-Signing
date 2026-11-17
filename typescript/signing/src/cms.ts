@@ -64,14 +64,23 @@ async function signingCertificateV2(certDer: Uint8Array): Promise<Uint8Array> {
   return attribute(Oids.signingCertificateV2, signingCert);
 }
 
-/** Build the signed attributes (order-independent; DER SET OF sorts them). */
+/**
+ * Build the signed attributes (order-independent; DER SET OF sorts them).
+ *
+ * `signing-time` is deliberately conditional. A legacy Adobe signature carries
+ * it, and Acrobat reads it. PAdES does not: ETSI EN 319 142-1 lists the CMS
+ * signing-time attribute as "shall not be present", because the signing time of
+ * a PAdES signature is the `/M` entry of the signature dictionary. Emitting both
+ * leaves two claims that can disagree, and a validator downgrades the signature
+ * out of the baseline profile for it.
+ */
 async function buildSignedAttributes(input: CmsInput): Promise<Uint8Array[]> {
   const attrs = [
     attribute(Oids.contentType, der.oid(Oids.data)),
-    attribute(Oids.signingTime, der.utcTime(input.signingTime)),
     attribute(Oids.messageDigest, der.octetString(input.messageDigest)),
   ];
   if (input.pades) attrs.push(await signingCertificateV2(input.certDer));
+  else attrs.push(attribute(Oids.signingTime, der.utcTime(input.signingTime)));
   return attrs;
 }
 
@@ -86,8 +95,23 @@ function ecdsaP1363ToDer(raw: Uint8Array): Uint8Array {
   return der.sequence(der.integerFromBytes(r), der.integerFromBytes(s));
 }
 
+/** The finished envelope, plus the timestamp token embedded in it. */
+export interface CmsResult {
+  /** The DER `ContentInfo` to place in `/Contents`. */
+  cms: Uint8Array;
+  /**
+   * The RFC 3161 token, when one was requested.
+   *
+   * Handed back because a long-term signature has to carry validation material
+   * for the timestamp authority as well as for the signer (ETSI EN 319 142-1
+   * §5.5) - and the authority's certificates arrive inside the token, not from
+   * the caller.
+   */
+  timestampToken?: Uint8Array;
+}
+
 /** Build the complete DER `ContentInfo` (signedData) envelope. */
-export async function buildSignedData(input: CmsInput): Promise<Uint8Array> {
+export async function buildSignedData(input: CmsInput): Promise<CmsResult> {
   const { params } = input;
   const digestAlg = algorithmIdentifier(params.digestOid, true);
   const isRsa = params.keyType === 'rsa';
@@ -106,8 +130,10 @@ export async function buildSignedData(input: CmsInput): Promise<Uint8Array> {
 
   // 3. Optional RFC 3161 signature timestamp -> unsigned attribute (PAdES B-T).
   let unsignedAttrsTagged: Uint8Array | undefined;
+  let timestampToken: Uint8Array | undefined;
   if (input.timestamp) {
     const token = await input.timestamp(signature);
+    timestampToken = token;
     const tsAttr = attribute(Oids.signatureTimeStampToken, token);
     // unsignedAttrs is [1] IMPLICIT SET OF Attribute.
     unsignedAttrsTagged = der.tlv(0xa1, stripOuterTag(der.setOf([tsAttr])));
@@ -143,7 +169,37 @@ export async function buildSignedData(input: CmsInput): Promise<Uint8Array> {
   );
 
   // 8. ContentInfo { signedData OID, [0] EXPLICIT SignedData }.
-  return der.sequence(der.oid(Oids.signedData), der.contextConstructed(0, signedData));
+  return {
+    cms: der.sequence(der.oid(Oids.signedData), der.contextConstructed(0, signedData)),
+    timestampToken,
+  };
+}
+
+/**
+ * The DER certificates carried inside a CMS `SignedData` - used to recover a
+ * timestamp authority's own certificates from the token it issued.
+ *
+ * Returns an empty list for anything it cannot make sense of: a token without
+ * certificates is unusual but not an error worth failing a signature over.
+ */
+export function certificatesFromCms(cms: Uint8Array): Uint8Array[] {
+  try {
+    const root = der.readNode(cms, 0);
+    const contentInfo = der.readChildren(cms, root.contentStart, root.contentEnd);
+    const explicit = contentInfo[1];
+    if (!explicit) return [];
+    const signedData = der.readChildren(cms, explicit.contentStart, explicit.contentEnd)[0];
+    const fields = der.readChildren(cms, signedData.contentStart, signedData.contentEnd);
+    // certificates is [0] IMPLICIT CertificateSet, after encapContentInfo.
+    const certs = fields.find(node => node.tag === 0xa0);
+    if (!certs) return [];
+    return der
+      .readChildren(cms, certs.contentStart, certs.contentEnd)
+      .filter(node => node.tag === der.Tag.SEQUENCE)
+      .map(node => der.nodeBytes(cms, node));
+  } catch {
+    return [];
+  }
 }
 
 /** Remove the outer tag+length from a TLV, returning just its content bytes. */

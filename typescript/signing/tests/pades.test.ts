@@ -4,7 +4,7 @@ import { signPdf } from '../src/signPdf';
 import { SigningAlgorithm } from '../src/SigningAlgorithm';
 import { latin1Decode, indexOfAscii } from '../src/pdf';
 import { buildTimeStampReq, extractTokenFromResponse } from '../src/timestamp';
-import { verifyCms, parseCms } from './helpers/cms';
+import { verifyCms, parseCms, readContents, signedAttrsContainOid } from './helpers/cms';
 import * as der from '../src/asn1/der';
 import { Oids } from '../src/asn1/oids';
 import { readNode } from '../src/asn1/der';
@@ -21,40 +21,6 @@ async function makePdf(): Promise<Uint8Array> {
   const bytes = await doc.generateBytesAsync();
   doc.dispose?.();
   return bytes;
-}
-
-function readContents(bytes: Uint8Array): Uint8Array {
-  const tag = indexOfAscii(bytes, '/Contents <');
-  const open = indexOfAscii(bytes, '<', tag);
-  const close = indexOfAscii(bytes, '>', open);
-  let hex = '';
-  for (let i = open + 1; i < close; i++) hex += String.fromCharCode(bytes[i]);
-  const all = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < all.length; i++) all[i] = parseInt(hex.substr(i * 2, 2), 16);
-  const node = readNode(all, 0);
-  return all.slice(0, node.end);
-}
-
-/** Does the SignerInfo's signed attributes contain the given OID? */
-function signedAttrsContainOid(cms: Uint8Array, oidDotted: string): boolean {
-  const root = der.readNode(cms, 0);
-  const ci = der.readChildren(cms, root.contentStart, root.contentEnd);
-  const sd = der.readChildren(cms, ci[1].contentStart, ci[1].contentEnd)[0];
-  const sdc = der.readChildren(cms, sd.contentStart, sd.contentEnd);
-  const signerInfos = sdc.filter(n => n.tag === 0x31).pop()!;
-  const si = der.readChildren(cms, signerInfos.contentStart, signerInfos.contentEnd)[0];
-  const fields = der.readChildren(cms, si.contentStart, si.contentEnd);
-  const wanted = der.oid(oidDotted);
-  for (const tag of [0xa0, 0xa1]) {
-    const attrsNode = fields.find(n => n.tag === tag);
-    if (!attrsNode) continue;
-    for (const attr of der.readChildren(cms, attrsNode.contentStart, attrsNode.contentEnd)) {
-      const typeOid = der.readChildren(cms, attr.contentStart, attr.contentEnd)[0];
-      const bytes = cms.slice(typeOid.start, typeOid.end);
-      if (bytes.length === wanted.length && bytes.every((b, i) => b === wanted[i])) return true;
-    }
-  }
-  return false;
 }
 
 describe('PAdES B-B', () => {

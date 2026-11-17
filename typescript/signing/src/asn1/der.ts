@@ -163,6 +163,30 @@ export function utcTime(date: Date): Uint8Array {
   return tlv(Tag.UTC_TIME, new TextEncoder().encode(text));
 }
 
+/**
+ * GeneralizedTime `YYYYMMDDHHMMSSZ`.
+ *
+ * The form RFC 3161 `TSTInfo` and RFC 6960 OCSP responses use, and the one
+ * required for any year outside UTCTime's 1950-2049 window.
+ */
+export function generalizedTime(date: Date): Uint8Array {
+  const p = (n: number, w = 2) => n.toString().padStart(w, '0');
+  const text =
+    `${p(date.getUTCFullYear(), 4)}${p(date.getUTCMonth() + 1)}${p(date.getUTCDate())}` +
+    `${p(date.getUTCHours())}${p(date.getUTCMinutes())}${p(date.getUTCSeconds())}Z`;
+  return tlv(Tag.GENERALIZED_TIME, new TextEncoder().encode(text));
+}
+
+/** ENUMERATED, as used by an OCSP `responseStatus`. */
+export function enumerated(value: number): Uint8Array {
+  return tlv(0x0a, new Uint8Array([value]));
+}
+
+/** BOOLEAN. */
+export function boolean(value: boolean): Uint8Array {
+  return tlv(0x01, new Uint8Array([value ? 0xff : 0x00]));
+}
+
 /** Context-specific constructed `[n]` wrapper (e.g. `[0]` IMPLICIT certificates). */
 export function contextConstructed(n: number, value: Uint8Array): Uint8Array {
   return tlv(0xa0 | n, value);

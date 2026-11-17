@@ -10,9 +10,22 @@ export { signPdf } from './signPdf';
 export { SigningAlgorithm } from './SigningAlgorithm';
 export type { AlgorithmParams } from './SigningAlgorithm';
 export type { SignatureSettings, PadesLevel } from './SignatureSettings';
+export { isLongTermLevel, isPadesLevel } from './SignatureSettings';
 export { SignatureOptions } from './SignatureOptions';
 export type { SignatureAppearance } from './appearance';
-export type { HttpClient } from './timestamp';
+export type { HttpClient, HttpRequest, HttpResponse } from './http';
+export { defaultHttpClient } from './http';
+
+// Long-term validation (PAdES B-LT / B-LTA).
+export type { ValidationMaterial, SuppliedValidationMaterial } from './validation';
+export { collectValidationMaterial, fetchIssuerCertificate } from './validation';
+export { buildDssRevision, vriKey, pdfHeaderVersion, needsEsicExtension } from './dss';
+export type { DssOptions } from './dss';
+export { appendDocumentTimestamp } from './docTimestamp';
+export type { DocumentTimestampOptions } from './docTimestamp';
+export { requestOcsp, buildOcspRequest, checkOcspResponse } from './ocsp';
+export { fetchCrl } from './crl';
+export { ocspUrls, crlUrls, caIssuerUrls, readExtensions } from './asn1/extensions';
 
 // Licence verification (offline; commercial add-on).
 
