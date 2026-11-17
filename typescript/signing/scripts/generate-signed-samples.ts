@@ -13,17 +13,9 @@ import { Document, TextBlock, StandardFonts, settings } from '@bonniepdf/core';
 import { signPdf } from '../src/signPdf';
 import { SigningAlgorithm } from '../src/SigningAlgorithm';
 import type { PadesLevel } from '../src/SignatureSettings';
-import type { HttpClient } from '../src/http';
-import {
-  aiaOcsp,
-  basicConstraintsCa,
-  crlDistributionPoint,
-  generateKeyPair,
-  issueCertificate,
-  TestOcspResponder,
-  TestTsa,
-  type TestIdentity,
-} from '../tests/helpers/pki';
+import { createDemoPki, TSA_URL } from '../examples/support/demo-pki';
+import { buildSignedAgreement } from '../examples/signed-agreement';
+import { buildSealedCertificate } from '../examples/sealed-certificate';
 import { writeFileSync, readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -99,50 +91,19 @@ async function main(): Promise<void> {
   console.log(`Wrote signed samples to ${outDir}/`);
 }
 
-const OCSP_URL = 'http://ocsp.test.invalid/ocsp';
-const CRL_URL = 'http://crl.test.invalid/ca.crl';
-const TSA_URL = 'http://tsa.test.invalid/tsr';
-
 /**
  * PAdES levels, signed against a throwaway PKI built here: a CA, an OCSP
  * responder and an RFC 3161 authority, all in-process.
  *
  * These are the samples the EU DSS gate checks. It asserts the level each file
  * actually reaches, which is the claim the product makes and the one a buyer's
- * validator will test.
+ * validator will test. The two signed demos are signed by the same authority, so
+ * the same gates cover them.
  */
 async function writePadesSamples(): Promise<void> {
-  const ca = await issueCertificate({
-    subject: 'BonniePDF Test CA',
-    serial: 1,
-    subjectKeys: await generateKeyPair(),
-    extensions: [basicConstraintsCa()],
-  });
-  const signer = await issueCertificate({
-    subject: 'BonniePDF Test Signer',
-    serial: 2,
-    subjectKeys: await generateKeyPair(),
-    issuer: ca,
-    extensions: [aiaOcsp(OCSP_URL), crlDistributionPoint(CRL_URL)],
-  });
-  // A real TSA certificate publishes revocation information like any other;
-  // without it a long-term signature cannot reach the LT level.
-  const tsaIdentity: TestIdentity = await issueCertificate({
-    subject: 'BonniePDF Test TSA',
-    serial: 3,
-    subjectKeys: await generateKeyPair(),
-    issuer: ca,
-    extensions: [aiaOcsp(OCSP_URL)],
-  });
-
-  const tsa = new TestTsa(tsaIdentity);
-  const ocsp = new TestOcspResponder(ca);
-
-  const httpClient: HttpClient = async request => {
-    if (request.url === TSA_URL) return { status: 200, body: await tsa.respond(request.body!) };
-    if (request.url === OCSP_URL) return { status: 200, body: await ocsp.respond(request.body!) };
-    return { status: 404, body: new Uint8Array(0) };
-  };
+  const pki = await createDemoPki();
+  const { ca, httpClient } = pki;
+  const signer = await pki.issueSigner('BonniePDF Test Signer');
 
   // The format DSS must report, and the indication it must reach. B and T carry
   // no revocation material, so an offline validator cannot complete the chain
@@ -169,6 +130,14 @@ async function writePadesSamples(): Promise<void> {
     writeFileSync(join(outDir, `${name}.pdf`), signed);
     manifest += `${name}.pdf\t${format}\t${indication}\n`;
   }
+
+  // The signed demos: a services agreement with a visible B-B signature, and a certificate
+  // sealed at B-LT. Each reaches the level it claims; B-B alone cannot complete a chain check
+  // offline, so INDETERMINATE is right for the agreement.
+  writeFileSync(join(outDir, 'demo-signed-agreement.pdf'), await buildSignedAgreement(pki));
+  manifest += 'demo-signed-agreement.pdf\tPAdES-BASELINE-B\tINDETERMINATE\n';
+  writeFileSync(join(outDir, 'demo-sealed-certificate.pdf'), await buildSealedCertificate(pki));
+  manifest += 'demo-sealed-certificate.pdf\tPAdES-BASELINE-LT\tTOTAL_PASSED\n';
 
   writeFileSync(join(outDir, 'test-ca.pem'), ca.certPem);
   writeFileSync(join(outDir, 'expected.tsv'), manifest);

@@ -29,6 +29,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The signed demos are compiled in here too, so they are tested as well as validated. -->
+    <Compile Include="..\BonniePDF.Signing.SampleGen\Demos\*.cs" LinkBase="Demos" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- BonniePDF core is referenced by the tests only, to generate a PDF to sign. -->
     <ProjectReference Include="..\..\..\BonniePDF-NET\BonniePDF\BonniePDF.csproj" />
     <ProjectReference Include="..\BonniePDF.Signing\BonniePDF.Signing.csproj" />

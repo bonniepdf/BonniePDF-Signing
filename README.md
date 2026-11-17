@@ -38,6 +38,29 @@ dotnet test .\dotnet\BonniePDF.Signing.Tests\BonniePDF.Signing.Tests.csproj
 dotnet pack .\dotnet\BonniePDF.Signing\BonniePDF.Signing.csproj -c Release
 ```
 
+## Demos
+
+Two signed documents show the signatures on documents people would actually sign. Both are built with BonniePDF and signed
+with the package, in both languages, and both are checked by the same external gates as the rest of the sample set.
+
+| Demo | Signature | What it shows |
+| --- | --- | --- |
+| Services agreement | Visible, PAdES B-B | The signature box is reserved in the layout and named; the layout snapshot reports where it landed, and the signature is placed exactly over it. Nothing is hard-coded to a page position. |
+| Fire safety certificate | Visible, PAdES B-LT | A trusted timestamp and the validation data are embedded, so the seal verifies offline, long after the signer's certificate has expired. |
+
+```powershell
+# TypeScript (from typescript/signing)
+tsx examples/signed-agreement.ts agreement.pdf
+tsx examples/sealed-certificate.ts certificate.pdf
+
+# .NET: writes both, with the rest of the sample set
+dotnet run --project dotnet/BonniePDF.Signing.SampleGen -- signed-samples
+```
+
+The demos sign with a throwaway authority built in the process, so they run anywhere and offline: the package never ships a
+private key. In production you pass a certificate issued by a real authority (PEM or PKCS#12) and the address of a real
+time-stamp authority. The signed output is not deterministic, so these are not part of the core examples catalogue.
+
 ## Licensing
 
 The signing packages are part of the BonniePDF Software licensed under the

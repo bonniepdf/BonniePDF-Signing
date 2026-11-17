@@ -21,11 +21,11 @@ Two co-equal implementations of the same behaviour. A signature produced by one 
 ## Layout
 
 ```
-typescript/signing/     @bonniepdf/signing — src/, tests/, examples/, scripts/
+typescript/signing/     @bonniepdf/signing — src/, tests/, examples/ (the signed demos), scripts/
 dotnet/
   BonniePDF.Signing/          Asn1/  Cms/  Pdf/  Timestamp/
   BonniePDF.Signing.Tests/
-  BonniePDF.Signing.SampleGen/
+  BonniePDF.Signing.SampleGen/   the sample set the gates validate, plus Demos/ (signed agreement, sealed certificate)
   scripts/
 ```
 
@@ -47,6 +47,14 @@ dotnet pack ./dotnet/BonniePDF.Signing/BonniePDF.Signing.csproj -c Release
 ```
 
 The .NET project is decoupled from core: tests and sample generation reference the local core project **only to produce PDFs to sign**.
+
+## Demos
+
+The signed demos (`examples/signed-agreement.ts`, `examples/sealed-certificate.ts`, and the `Demos/` folder of SampleGen) place a
+visible signature over a box the layout reserved, found through the layout snapshot, never a hard-coded position. A widget's `/Rect` is two
+corners (`[llx lly urx ury]`) while the API takes `[x, y, width, height]`; the library converts, and `pdfsig` cannot catch a wrong
+rectangle because it ignores widget geometry, so the demo tests assert it. A new sample goes in the sample generators of both languages with a
+line in `expected.tsv`, so the pdfsig and DSS gates cover it. They sign with a throwaway authority, never a committed key.
 
 ## Cryptographic hygiene
 

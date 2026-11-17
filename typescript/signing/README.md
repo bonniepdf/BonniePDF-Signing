@@ -123,7 +123,7 @@ const signed = await signPdf(pdfBytes, {
   privateKeyPem,
   appearance: {
     page: 0, // 0-based page index
-    rect: [72, 72, 220, 64], // [x, y, width, height] in points
+    rect: [72, 72, 220, 64], // [x, y, width, height] in points: a box 220 wide and 64 high, 72 from the left and bottom edges
     text: ['Signed by Jane Doe', 'Acme Ltd'], // optional; derived if omitted
   },
 });

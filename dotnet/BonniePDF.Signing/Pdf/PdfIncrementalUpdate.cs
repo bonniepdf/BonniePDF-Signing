@@ -197,8 +197,15 @@ internal static class PdfIncrementalUpdate
 
         string sigDict = BuildSigDict(meta);
 
+        // The caller gives [x, y, width, height]; a PDF annotation's /Rect is [llx lly urx ury], two corners.
         string rect = visible != null
-            ? "[" + string.Join(" ", visible.Rect.Select(n => n.ToString(CultureInfo.InvariantCulture))) + "]"
+            ? "[" + string.Join(" ", new[]
+                {
+                    visible.Rect[0],
+                    visible.Rect[1],
+                    visible.Rect[0] + visible.Rect[2],
+                    visible.Rect[1] + visible.Rect[3],
+                }.Select(n => n.ToString(CultureInfo.InvariantCulture))) + "]"
             : "[0 0 0 0]";
         string widgetDict =
             "<<\n  /Type /Annot\n  /Subtype /Widget\n  /FT /Sig\n  /Rect " + rect + "\n" +

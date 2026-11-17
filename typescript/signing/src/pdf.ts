@@ -235,7 +235,12 @@ export function buildIncrementalUpdate(
 
   const sigDict = buildSigDict(meta);
 
-  const rect = visible ? `[${visible.rect.map(n => n.toString()).join(' ')}]` : '[0 0 0 0]';
+  // The caller gives `[x, y, width, height]`; a PDF annotation's /Rect is `[llx lly urx ury]`, two corners.
+  const rect = visible
+    ? `[${[visible.rect[0], visible.rect[1], visible.rect[0] + visible.rect[2], visible.rect[1] + visible.rect[3]]
+        .map(n => n.toString())
+        .join(' ')}]`
+    : '[0 0 0 0]';
   let widgetDict =
     `<<\n  /Type /Annot\n  /Subtype /Widget\n  /FT /Sig\n  /Rect ${rect}\n` +
     `  /V ${sigId} 0 R\n  /T (Signature1)\n  /F 132\n  /P ${info.targetPageId} 0 R\n`;

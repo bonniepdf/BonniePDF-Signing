@@ -20,6 +20,8 @@ import { bytesToBase64 } from '../../src/pem';
 const SHA256_WITH_RSA = '1.2.840.113549.1.1.11';
 const OID_COMMON_NAME = '2.5.4.3';
 const OID_BASIC_CONSTRAINTS = '2.5.29.19';
+const OID_EXTENDED_KEY_USAGE = '2.5.29.37';
+const OID_KP_TIME_STAMPING = '1.3.6.1.5.5.7.3.8';
 const OID_TSA_POLICY = '1.3.6.1.4.1.13762.3'; // arbitrary test policy
 
 /** A generated key pair plus the SPKI bytes its certificate needs. */
@@ -84,6 +86,14 @@ export function basicConstraintsCa(): Uint8Array {
   return extension(OID_BASIC_CONSTRAINTS, der.sequence(der.boolean(true)), true);
 }
 
+/**
+ * `ExtendedKeyUsage { id-kp-timeStamping }`, critical. RFC 3161 section 2.3 requires a time-stamp
+ * authority's certificate to carry exactly this, and a validator will not trust its tokens without it.
+ */
+export function timeStampingKeyUsage(): Uint8Array {
+  return extension(OID_EXTENDED_KEY_USAGE, der.sequence(der.oid(OID_KP_TIME_STAMPING)), true);
+}
+
 export interface CertificateSpec {
   subject: string;
   serial: number;
@@ -133,7 +143,9 @@ export async function issueCertificate(spec: CertificateSpec): Promise<TestIdent
 
 /** Wrap DER in PEM armour, 64 characters to a line. */
 export function toPem(label: string, derBytes: Uint8Array): string {
-  const body = bytesToBase64(derBytes).replace(/(.{64})/g, '$1\n').replace(/\n$/, '');
+  const body = bytesToBase64(derBytes)
+    .replace(/(.{64})/g, '$1\n')
+    .replace(/\n$/, '');
   return `-----BEGIN ${label}-----\n${body}\n-----END ${label}-----\n`;
 }
 
@@ -166,9 +178,7 @@ async function buildAttachedSignedData(
     // that omits it would quietly certify tokens no real validator accepts.
     const certHash = new Uint8Array(await crypto.subtle.digest('SHA-256', signer.certDer as BufferSource));
     const essCertId = der.sequence(der.octetString(certHash));
-    attributes.push(
-      der.sequence(der.oid(Oids.signingCertificateV2), der.set(der.sequence(der.sequence(essCertId))))
-    );
+    attributes.push(der.sequence(der.oid(Oids.signingCertificateV2), der.set(der.sequence(der.sequence(essCertId)))));
   }
   const signedAttrsSet = der.setOf(attributes);
   const signature = new Uint8Array(

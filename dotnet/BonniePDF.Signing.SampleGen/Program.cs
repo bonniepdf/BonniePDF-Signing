@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BonniePDF.Signing;
 using BonniePDF.Signing.Http;
+using BonniePDF.Signing.SampleGen.Demos;
 using BonniePDF.Signing.TestSupport;
 
 // Generates the same set of signed sample PDFs as the TypeScript
@@ -14,10 +15,6 @@ using BonniePDF.Signing.TestSupport;
 // Both libraries are then validated by the identical pdfsig-validate.sh gate.
 //
 // Usage:  dotnet run --project BonniePDF.Signing.SampleGen -- [outDir]
-
-const string OcspUrl = "http://ocsp.test.invalid/ocsp";
-const string CrlUrl = "http://crl.test.invalid/ca.crl";
-const string TsaUrl = "http://tsa.test.invalid/tsr";
 
 string outDir = args.Length > 0 ? args[0] : "signed-samples";
 Directory.CreateDirectory(outDir);
@@ -68,29 +65,9 @@ Console.WriteLine($"Wrote signed samples to {outDir}/");
 
 static async Task WritePadesSamplesAsync(string outDir)
 {
-    using TestPki.Identity ca = TestPki.IssueCa("BonniePDF Test CA");
-    using TestPki.Identity signer = TestPki.Issue("BonniePDF Test Signer", ca,
-        TestPki.AiaOcsp(OcspUrl), TestPki.CrlDistributionPoint(CrlUrl));
-
-    // RFC 3161 §2.3 requires the critical id-kp-timeStamping extended key usage.
-    // The AIA matters just as much: without revocation information for the
-    // authority's own certificate a long-term signature cannot reach LT.
-    var timeStamping = new X509EnhancedKeyUsageExtension(
-        new OidCollection { new Oid("1.3.6.1.5.5.7.3.8") }, critical: true);
-    using TestPki.Identity tsaIdentity = TestPki.Issue("BonniePDF Test TSA", ca,
-        timeStamping, TestPki.AiaOcsp(OcspUrl));
-
-    var tsa = new TestPki.TestTsa(tsaIdentity);
-    var ocsp = new TestPki.TestOcspResponder(ca);
-
-    Task<SigningHttpResponse> Transport(SigningHttpRequest request, CancellationToken ct)
-    {
-        if (string.Equals(request.Url, TsaUrl, StringComparison.Ordinal))
-            return Task.FromResult(new SigningHttpResponse { Status = 200, Body = tsa.Respond(request.Body) });
-        if (string.Equals(request.Url, OcspUrl, StringComparison.Ordinal))
-            return Task.FromResult(new SigningHttpResponse { Status = 200, Body = ocsp.Respond(request.Body) });
-        return Task.FromResult(new SigningHttpResponse { Status = 404, Body = new byte[0] });
-    }
+    using var pki = new DemoPki();
+    TestPki.Identity ca = pki.Ca;
+    TestPki.Identity signer = pki.IssueSigner("BonniePDF Test Signer");
 
     // filename, level, the format DSS must report, and the indication it must
     // reach. B and T carry no revocation material, so an offline validator
@@ -113,14 +90,22 @@ static async Task WritePadesSamplesAsync(string outDir)
             PrivateKeyPem = signer.KeyPem,
             CertificateChainPem = new[] { ca.CertPem },
             PadesLevel = level,
-            TimestampUrl = level == PadesLevel.BB ? null : TsaUrl,
-            HttpClient = Transport,
+            TimestampUrl = level == PadesLevel.BB ? null : DemoPki.TsaUrl,
+            HttpClient = pki.Transport,
             Reason = "Approved",
         }).ConfigureAwait(false);
 
         File.WriteAllBytes(Path.Combine(outDir, name + ".pdf"), signed);
         manifest.Append(name).Append(".pdf\t").Append(format).Append('\t').Append(indication).Append('\n');
     }
+
+    // The signed demos: a services agreement with a visible B-B signature, and a certificate
+    // sealed at B-LT. Each reaches the level it claims; B-B alone cannot complete a chain check
+    // offline, so INDETERMINATE is right for the agreement.
+    File.WriteAllBytes(Path.Combine(outDir, "demo-signed-agreement.pdf"), SignedAgreementDemo.BuildSigned(pki));
+    manifest.Append("demo-signed-agreement.pdf\tPAdES-BASELINE-B\tINDETERMINATE\n");
+    File.WriteAllBytes(Path.Combine(outDir, "demo-sealed-certificate.pdf"), await SealedCertificateDemo.BuildSealedAsync(pki).ConfigureAwait(false));
+    manifest.Append("demo-sealed-certificate.pdf\tPAdES-BASELINE-LT\tTOTAL_PASSED\n");
 
     File.WriteAllText(Path.Combine(outDir, "test-ca.pem"), ca.CertPem);
     File.WriteAllText(Path.Combine(outDir, "expected.tsv"), manifest.ToString());

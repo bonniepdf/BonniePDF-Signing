@@ -49,7 +49,9 @@ describe('Visible signature widget', () => {
 
   it('gives the widget a non-zero /Rect', () => {
     const text = latin1Decode(signed);
-    expect(text).toContain('/Rect [72 72 200 60]');
+    // [x, y, width, height] = [72, 72, 200, 60] is the box from (72, 72) to (272, 132).
+    expect(text).toContain('/Rect [72 72 272 132]');
+    expect(text).toContain('/BBox [0 0 200 60]');
     expect(text).not.toContain('/Rect [0 0 0 0]');
   });
 

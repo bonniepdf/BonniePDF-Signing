@@ -178,7 +178,9 @@ public class SigningTests
         });
 
         string text = Latin1(signed);
-        Assert.Contains("/Rect [72 72 200 60]", text);
+        // [x, y, width, height] = [72, 72, 200, 60] is the box from (72, 72) to (272, 132).
+        Assert.Contains("/Rect [72 72 272 132]", text);
+        Assert.Contains("/BBox [0 0 200 60]", text);
         Assert.DoesNotContain("/Rect [0 0 0 0]", text);
         Assert.Contains("/AP << /N", text);
         Assert.Contains("/Subtype /Form", text);
