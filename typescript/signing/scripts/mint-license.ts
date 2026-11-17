@@ -1,14 +1,19 @@
 /**
  * Vendor-side licence minting. NOT part of the published package — this is the
- * "licence server", run by hand (or from a billing webhook) when you sell or
- * renew. It needs your **private** key, which must never be committed or shipped.
+ * "licence server", run by hand (or from a billing webhook) when you sell.
+ * It needs your **private** key, which must never be committed or shipped.
  *
  * Usage:
  *   tsx scripts/mint-license.ts \
  *     --key ./vendor-license-key.pem \
  *     --customer acme-corp \
+ *     --license-id ord_123 \
+ *     --organisation "Acme Corp" \
  *     --edition enterprise \
- *     [--seats 25] [--features pades,ltv] [--exp 2027-06-26]
+ *     [--features pades,ltv] [--updates-through 2027-08-20]
+ *
+ * Paid production keys are perpetual and MUST omit `--exp`. `--exp` is
+ * accepted only with `--edition evaluation` for a time-limited evaluation key.
  *
  * Prints the licence key string to stdout. Email it to the customer; they paste
  * it into `settings.license`, the `BONNIEPDF_LICENSE_KEY` env var, or a
@@ -59,9 +64,18 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const keyPath = args.key;
   const customer = args.customer;
-  const edition = (args.edition ?? 'enterprise') as LicenseEdition;
+  const edition = (args.edition ?? 'signing') as LicenseEdition;
   if (!keyPath || !customer) {
-    throw new Error('required: --key <private-key.pem> --customer <id> [--edition] [--seats] [--features] [--exp]');
+    throw new Error(
+      'required: --key <private-key.pem> --customer <id> [--license-id] [--organisation] ' +
+        '[--edition solo|signing|professional|enterprise|evaluation] [--features] [--updates-through] [--exp for evaluation only]'
+    );
+  }
+  if (!['evaluation', 'solo', 'signing', 'professional', 'enterprise'].includes(edition)) {
+    throw new Error(`invalid --edition "${edition}"`);
+  }
+  if (args.exp && edition !== 'evaluation') {
+    throw new Error('paid production keys are perpetual: --exp is allowed only with --edition evaluation');
   }
 
   const claims: LicenseClaims = {
@@ -69,8 +83,10 @@ async function main(): Promise<void> {
     edition,
     iat: new Date().toISOString().slice(0, 10),
   };
-  if (args.seats) claims.seats = Number(args.seats);
+  if (args['license-id']) claims.licenseId = args['license-id'];
+  if (args.organisation) claims.organisation = args.organisation;
   if (args.features) claims.features = args.features.split(',').map(f => f.trim());
+  if (args['updates-through']) claims.updatesThrough = args['updates-through'];
   if (args.exp) claims.exp = args.exp;
 
   const token = await mintLicense(readFileSync(keyPath, 'utf8'), claims);

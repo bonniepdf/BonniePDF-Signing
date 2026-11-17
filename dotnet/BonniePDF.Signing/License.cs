@@ -8,10 +8,12 @@ using System.Text.Json.Serialization;
 
 namespace BonniePDF.Signing;
 
-/// <summary>Licence edition. <c>Free</c> is the unlicensed/evaluation tier (no signed key).</summary>
+/// <summary>Licence edition encoded in an issued key. Unlicensed use is evaluation only.</summary>
 public enum LicenseEdition
 {
-    Free,
+    Evaluation,
+    Solo,
+    Signing,
     Professional,
     Enterprise,
 }
@@ -42,13 +44,17 @@ public sealed class LicenseClaims
     [JsonPropertyName("sub")]
     public string Sub { get; set; }
 
-    /// <summary>Licensed edition (<c>free</c>/<c>professional</c>/<c>enterprise</c>).</summary>
+    /// <summary>Unique licence or order identifier.</summary>
+    [JsonPropertyName("licenseId")]
+    public string LicenseId { get; set; }
+
+    /// <summary>Human-readable licensed organisation.</summary>
+    [JsonPropertyName("organisation")]
+    public string Organisation { get; set; }
+
+    /// <summary>Licensed edition (<c>evaluation</c>/<c>solo</c>/<c>signing</c>/<c>professional</c>/<c>enterprise</c>).</summary>
     [JsonPropertyName("edition")]
     public string Edition { get; set; }
-
-    /// <summary>Optional seat count (informational; not enforced at runtime).</summary>
-    [JsonPropertyName("seats")]
-    public int? Seats { get; set; }
 
     /// <summary>Optional feature flags this licence unlocks.</summary>
     [JsonPropertyName("features")]
@@ -58,7 +64,11 @@ public sealed class LicenseClaims
     [JsonPropertyName("iat")]
     public string Iat { get; set; }
 
-    /// <summary>Expiry date (ISO <c>YYYY-MM-DD</c> or full ISO 8601). Absent = perpetual.</summary>
+    /// <summary>Last release date included in the updates term; informational, not runtime expiry.</summary>
+    [JsonPropertyName("updatesThrough")]
+    public string UpdatesThrough { get; set; }
+
+    /// <summary>Evaluation/time-limited expiry. Paid production keys omit this.</summary>
     [JsonPropertyName("exp")]
     public string Exp { get; set; }
 }
@@ -100,7 +110,7 @@ public static class License
 {
     private const string Prefix = "BPDF1";
 
-    /// <summary>Days a key keeps working after <c>exp</c> before signing is blocked.</summary>
+    /// <summary>Grace period for an expressly time-limited evaluation or pilot key.</summary>
     public const int DefaultGraceDays = 30;
 
     /// <summary>

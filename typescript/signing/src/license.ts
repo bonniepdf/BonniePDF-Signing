@@ -21,8 +21,8 @@
  */
 import { base64ToBytes } from './pem';
 
-/** Licence edition. `free` is the unlicensed/evaluation tier (no signed key). */
-export type LicenseEdition = 'free' | 'professional' | 'enterprise';
+/** Licence edition encoded in an issued key. Unlicensed use is evaluation only. */
+export type LicenseEdition = 'evaluation' | 'solo' | 'signing' | 'professional' | 'enterprise';
 
 /**
  * Outcome of verifying a licence key:
@@ -39,15 +39,19 @@ export type LicenseStatus = 'valid' | 'grace' | 'expired' | 'invalid' | 'revoked
 export interface LicenseClaims {
   /** Customer id (subject). Used for attribution and revocation. */
   sub: string;
+  /** Unique licence or order identifier. */
+  licenseId?: string;
+  /** Human-readable licensed organisation. */
+  organisation?: string;
   /** Licensed edition. */
   edition: LicenseEdition;
-  /** Optional seat count (informational; not enforced at runtime). */
-  seats?: number;
   /** Optional feature flags this licence unlocks (e.g. `["pades","ltv"]`). */
   features?: string[];
   /** Issued-at date (ISO `YYYY-MM-DD` or full ISO 8601). */
   iat?: string;
-  /** Expiry date (ISO `YYYY-MM-DD` or full ISO 8601). Absent = perpetual. */
+  /** Last release date included in the updates term; informational, not runtime expiry. */
+  updatesThrough?: string;
+  /** Evaluation/time-limited expiry. Paid production keys are non-expiring and omit this. */
   exp?: string;
 }
 
@@ -62,7 +66,7 @@ export interface LicenseVerification {
   message: string;
 }
 
-/** Days a key keeps working after `exp` before signing is blocked. */
+/** Grace period for an expressly time-limited evaluation or pilot key. */
 export const DEFAULT_GRACE_DAYS = 30;
 
 /**
