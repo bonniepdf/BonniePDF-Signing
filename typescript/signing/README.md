@@ -10,12 +10,14 @@ are **zero runtime dependencies** - every cryptographic operation runs on the
 (`crypto.subtle`), so the same code runs in the browser, Node.js 18+, Bun, Deno,
 and serverless runtimes.
 
-> **Included with every paid licence.** Signing is **not** part of the
-> Community-licensed `@bonniepdf/core`. Production use requires a signing
-> licence under the [BonniePDF Commercial License Agreement](https://www.bonniepdf.dev/legal/commercial-license),
-> which covers signing at no extra cost. A paid licence covers
-> both runtimes for the named legal entities, with unlimited developers and
-> signing operations. There is no licence key, activation, or telemetry: the
+> **Included with every paid licence.** Signing is **not** covered by the
+> Community License that the `@bonniepdf/core` core uses, whatever the size of your
+> organisation. Evaluation is free and unlimited in time; production use
+> requires a paid Professional or Enterprise licence under the
+> [BonniePDF Commercial License Agreement](https://www.bonniepdf.dev/legal/commercial-license),
+> which includes signing at no extra cost — it is not sold separately. A paid
+> licence covers both runtimes for the legal entities named in the Order, with
+> unlimited developers and signing operations. There is no licence key, activation, or telemetry: the
 > package behaves identically whether or not you hold a licence, and
 > compliance is contractual rather than enforced in code. See
 > **[LICENSING.md](LICENSING.md)** for the entitlement model.

@@ -1,12 +1,16 @@
 # @bonniepdf/signing licensing
 
-`@bonniepdf/signing` is separately licensed but is **included with every paid
-core licence** at no additional fee. Production use always requires a paid core
-licence; it is never permitted under Community terms.
+`@bonniepdf/signing` is part of the BonniePDF Software licensed under the BonniePDF
+Commercial License Agreement, and is **included with every paid licence** at no
+additional fee. It is not sold separately. It is **not** covered by the
+BonniePDF Community License, which licenses the core library only, so
+production use always requires a paid licence — even where the core library
+itself is used free under Community terms.
 
-The governing terms are in [LICENSE](LICENSE). The standard core commercial
-terms incorporated by that agreement are in
-[COMMERCIAL-LICENSE.txt](COMMERCIAL-LICENSE.txt). Current pricing is at
+[LICENSE](LICENSE) is the Signing Package Notice, which grants free evaluation.
+Your full rights are in the Commercial License Agreement in
+[COMMERCIAL-LICENSE.txt](COMMERCIAL-LICENSE.txt), which controls if the two
+differ. Current pricing is at
 [bonniepdf.dev/license](https://www.bonniepdf.dev/license/).
 
 ## No licence keys
@@ -20,7 +24,7 @@ activation, or telemetry is required. Signing is held to the same standard: the
 package you install is the whole package, and it works identically for everyone.
 
 Your obligation is contractual, not technical. Signing a PDF in production
-requires a paid Solo, Professional, or Enterprise licence. We rely on you to
+requires a paid Professional or Enterprise licence. We rely on you to
 hold one — the same way the rest of BonniePDF works.
 
 ```ts
@@ -34,17 +38,17 @@ const signed = await signPdf(pdfBytes, {
 
 ## Entitlement model
 
-- A signing entitlement arises automatically from a paid Solo, Professional, or
-  Enterprise core Order and covers both the TypeScript/JavaScript and .NET
+- A signing entitlement arises automatically from a paid Professional or
+  Enterprise Order and covers both the TypeScript/JavaScript and .NET
   signing packages. Signing is not sold separately.
-- Solo signing coverage applies to its one named Solo User and business.
 - Professional signing coverage applies to the one legal entity in the Order.
 - Enterprise signing coverage applies to the named entity and only the Covered
   Affiliates identified in the Order.
-- Solo is limited to one named developer. Other standard entitlements have no
-  developer-seat, server, deployment, document, or signature fees.
-- Production rights to versions delivered during an active updates term are
-  perpetual. Renewal is optional for future versions and support.
+- Paid licences include unlimited developers and have no server, deployment,
+  document, or signature fees.
+- Production rights to versions delivered during an active Updates Term
+  (twelve months unless the Order says otherwise) are perpetual. Renewal is
+  optional, and needed only for later versions and support.
 
 ## Evaluation
 

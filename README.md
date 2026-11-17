@@ -2,8 +2,7 @@
 
 Commercial digital-signature add-ons for BonniePDF.
 
-This folder is the local home for both signing ports imported from
-a working branch:
+This repository contains both signing ports:
 
 - `typescript/signing` - `@bonniepdf/signing`
 - `dotnet/BonniePDF.Signing` - `BonniePDF.Signing`
@@ -17,8 +16,9 @@ BonniePDF Commercial License Agreement rather than enforced in software.
 
 ## TypeScript
 
-The TypeScript package is included in the parent `C:\GITHUB\bonniepdf`
-workspace as `BonniePDF-Signing/typescript/signing`, so from the workspace root:
+The TypeScript package is a member of a pnpm workspace alongside
+`@bonniepdf/core`, as `BonniePDF-Signing/typescript/signing`. From the workspace
+root:
 
 ```powershell
 pnpm --filter @bonniepdf/signing typecheck
@@ -40,15 +40,25 @@ dotnet pack .\dotnet\BonniePDF.Signing\BonniePDF.Signing.csproj -c Release
 
 ## Licensing
 
-Production signing is always paid. One standard signing entitlement covers both
-runtimes for the legal entities identified in the Order, with unlimited
-developers and signing operations. Rights to covered signing versions are
-perpetual; annual renewal is optional for future versions and support.
+The signing packages are part of the BonniePDF Software licensed under the
+BonniePDF Commercial License Agreement. They are **not** covered by the
+BonniePDF Community License, which licenses the core library only.
+
+- **Evaluation is free** — development, testing, security review, proof of
+  concept, and non-production staging, for as long as you need and with no
+  reduction in functionality.
+- **Production signing is always paid**, whatever the size of the organisation.
+  Signing is included with every paid Professional or Enterprise licence at no
+  additional fee and is not sold separately. It covers both runtimes for the
+  legal entities identified in the Order, with unlimited developers and signing
+  operations.
+- **Rights to covered versions are perpetual.** Renewal is optional, and needed
+  only for versions released after the Updates Term and for support.
 
 Compliance is contractual, not technical. There are no keys to issue,
 rotate, or revoke, and no vendor key material to protect.
 
 See [LICENSE](LICENSE) for the Signing Package Notice,
-[COMMERCIAL-LICENSE.txt](COMMERCIAL-LICENSE.txt) for incorporated standard
-commercial terms, and each package's `LICENSING.md` for the entitlement
-model.
+[COMMERCIAL-LICENSE.txt](COMMERCIAL-LICENSE.txt) for the Commercial License
+Agreement that governs production use, and each package's `LICENSING.md` for
+the entitlement model.
