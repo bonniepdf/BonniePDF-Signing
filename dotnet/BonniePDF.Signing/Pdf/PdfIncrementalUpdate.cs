@@ -58,8 +58,11 @@ internal static class PdfIncrementalUpdate
     /// <summary>Format a date as a PDF date string <c>D:YYYYMMDDHHmmSS+00'00'</c> (UTC).</summary>
     public static string PdfDate(DateTimeOffset date)
     {
-        var u = date.ToUniversalTime();
-        return $"D:{u:yyyyMMddHHmmss}+00'00'";
+        // Invariant, like every other piece of file syntax: under a culture whose
+        // default calendar is not Gregorian (th-TH, ar-SA) the current culture
+        // would print a different year.
+        string utc = date.ToUniversalTime().ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
+        return $"D:{utc}+00'00'";
     }
 
     public sealed class PdfInfo
