@@ -37,7 +37,7 @@
          which is not in the default compile reference set on either target. Not a
          third-party dependency. Each target takes the servicing line that matches its
          runtime, so net8.0 consumers are not pulled onto 10.x BCL packages. -->
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.1" Condition="'$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.2" Condition="'$(TargetFramework)' == 'net8.0'" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.12" Condition="'$(TargetFramework)' == 'net10.0'" />
   </ItemGroup>
 
