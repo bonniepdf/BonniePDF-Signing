@@ -11,7 +11,7 @@ itself is used free under Community terms.
 Your full rights are in the Commercial License Agreement in
 [COMMERCIAL-LICENSE.txt](COMMERCIAL-LICENSE.txt), which controls if the two
 differ. Current pricing is at
-[bonniepdf.dev/license](https://www.bonniepdf.dev/license/).
+[bonniepdf.dev/pricing](https://www.bonniepdf.dev/pricing).
 
 ## No licence keys
 
