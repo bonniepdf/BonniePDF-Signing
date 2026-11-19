@@ -134,4 +134,4 @@ jobs:
               assert data["version"] == os.environ["VERSION"]
           PY
       - name: Publish npm package
-        run: npm publish packages/*.tgz --access public --provenance
+        run: npm publish ./packages/*.tgz --access public --provenance
