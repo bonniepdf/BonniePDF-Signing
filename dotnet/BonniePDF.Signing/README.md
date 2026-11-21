@@ -1,6 +1,6 @@
 # BonniePDF.Signing
 
-[Documentation](https://www.bonniepdf.dev/features/dotnet/signing) · [BonniePDF on NuGet](https://www.nuget.org/packages/BonniePDF) · [TypeScript package](https://www.npmjs.com/package/@bonniepdf/signing) · [Pricing & Licensing](https://www.bonniepdf.dev/pricing)
+[Documentation](https://www.bonniepdf.dev/features/dotnet/signing) · [Release notes](https://www.bonniepdf.dev/docs/dotnet/whats-new) · [BonniePDF on NuGet](https://www.nuget.org/packages/BonniePDF) · [TypeScript package](https://www.npmjs.com/package/@bonniepdf/signing) · [Pricing & Licensing](https://www.bonniepdf.dev/pricing)
 
 Digital signatures for [BonniePDF](https://www.bonniepdf.dev).
 
