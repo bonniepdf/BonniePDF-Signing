@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: signing-ci-typescript-${{ github.ref }}
+  group: signing-ci-typescript-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && 'manual' || 'automatic' }}
   cancel-in-progress: true
 
 jobs:
