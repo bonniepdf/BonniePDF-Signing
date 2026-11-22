@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag, for example v2026.11.12
+        description: Version tag (the tag must exist when publishing)
         required: true
         type: string
       registry:
@@ -13,6 +13,10 @@ on:
         default: both
         type: choice
         options: [both, nuget, npm]
+      validate_only:
+        description: Check trusted publishing without uploading packages
+        type: boolean
+        default: false
 
 permissions:
   actions: read
@@ -24,7 +28,7 @@ concurrency:
 
 jobs:
   checks:
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    if: ${{ !inputs.validate_only && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
     runs-on: ubuntu-latest
     outputs:
       dotnet_run: ${{ steps.check.outputs.dotnet_run }}
@@ -59,7 +63,7 @@ jobs:
 
   nuget:
     needs: checks
-    if: inputs.registry == 'both' || inputs.registry == 'nuget'
+    if: ${{ !cancelled() && (inputs.validate_only || needs.checks.result == 'success') && (inputs.registry == 'both' || inputs.registry == 'nuget') }}
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -67,15 +71,18 @@ jobs:
       id-token: write
     steps:
       - uses: actions/download-artifact@v4
+        if: ${{ !inputs.validate_only }}
         with:
           name: bonniepdf-signing-nupkg
           path: packages
           github-token: ${{ github.token }}
           run-id: ${{ needs.checks.outputs.dotnet_run }}
       - uses: actions/setup-dotnet@v4
+        if: ${{ !inputs.validate_only }}
         with:
           dotnet-version: 10.0.x
       - name: Verify the package version
+        if: ${{ !inputs.validate_only }}
         env:
           VERSION: ${{ needs.checks.outputs.version }}
         run: |
@@ -90,18 +97,21 @@ jobs:
               assert values["id"] == "BonniePDF.Signing"
               assert values["version"] == os.environ["VERSION"]
           PY
+      - name: Record BonniePDF.Signing trusted publisher identity
+        run: echo "BonniePDF.Signing uses ${GITHUB_REPOSITORY} (ID ${GITHUB_REPOSITORY_ID}), publish.yml, with no environment."
       - uses: NuGet/login@v1
         id: login
         with:
           user: ${{ vars.NUGET_USER }}
       - name: Publish NuGet package
+        if: ${{ !inputs.validate_only }}
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: dotnet nuget push packages/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
   npm:
     needs: checks
-    if: inputs.registry == 'both' || inputs.registry == 'npm'
+    if: ${{ !cancelled() && (inputs.validate_only || needs.checks.result == 'success') && (inputs.registry == 'both' || inputs.registry == 'npm') }}
     runs-on: ubuntu-latest
     # Same identity as @bonniepdf/core's publisher: npm trusted publishing
     # matches the environment name when one is configured. `deployment: false`
@@ -114,31 +124,6 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: bonniepdf-signing-npm
-          path: packages
-          github-token: ${{ github.token }}
-          run-id: ${{ needs.checks.outputs.typescript_run }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-      - name: Set up npm trusted publishing
-        run: npm install --global npm@12.2.2
-      - name: Verify the package version
-        env:
-          VERSION: ${{ needs.checks.outputs.version }}
-        run: |
-          python - <<'PY'
-          import os, pathlib, tarfile, json
-          packages = list(pathlib.Path("packages").glob("*.tgz"))
-          assert len(packages) == 1, "Expected one npm tarball"
-          with tarfile.open(packages[0]) as tar:
-              data = json.load(tar.extractfile("package/package.json"))
-              assert data["name"] == "@bonniepdf/signing"
-              assert data["version"] == os.environ["VERSION"]
-          PY
       # Asks npm, before publishing, whether this run matches the package's
       # trusted publisher. A mismatch otherwise surfaces only as E404 on
       # publish. Prints the identity npm sees, never the token.
@@ -147,6 +132,7 @@ jobs:
           PACKAGE: "@bonniepdf/signing"
         run: |
           set -euo pipefail
+          echo "Checking $PACKAGE from $GITHUB_REPOSITORY (repository ID $GITHUB_REPOSITORY_ID)."
           id_token=$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" | jq -r .value)
           status=$(curl -sS -o exchange.json -w '%{http_code}' -X POST -H "Authorization: Bearer $id_token" "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/${PACKAGE/\//%2f}")
           accepted=false
@@ -165,5 +151,35 @@ jobs:
           echo "Then re-run this job."
           exit 1
 
+      - uses: actions/download-artifact@v4
+        if: ${{ !inputs.validate_only }}
+        with:
+          name: bonniepdf-signing-npm
+          path: packages
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.checks.outputs.typescript_run }}
+      - uses: actions/setup-node@v4
+        if: ${{ !inputs.validate_only }}
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Set up npm trusted publishing
+        if: ${{ !inputs.validate_only }}
+        run: npm install --global npm@12.2.2
+      - name: Verify the package version
+        if: ${{ !inputs.validate_only }}
+        env:
+          VERSION: ${{ needs.checks.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os, pathlib, tarfile, json
+          packages = list(pathlib.Path("packages").glob("*.tgz"))
+          assert len(packages) == 1, "Expected one npm tarball"
+          with tarfile.open(packages[0]) as tar:
+              data = json.load(tar.extractfile("package/package.json"))
+              assert data["name"] == "@bonniepdf/signing"
+              assert data["version"] == os.environ["VERSION"]
+          PY
       - name: Publish npm package
+        if: ${{ !inputs.validate_only }}
         run: npm publish ./packages/*.tgz --access public --provenance
