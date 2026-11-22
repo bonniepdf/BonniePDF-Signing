@@ -46,6 +46,7 @@ public static class PdfSigner
 
     private static async Task<byte[]> SignCoreAsync(byte[] pdfBytes, SignatureSettings settings, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         if (pdfBytes == null || pdfBytes.Length == 0) throw new ArgumentException("pdfBytes is empty", nameof(pdfBytes));
         settings.Validate();
 

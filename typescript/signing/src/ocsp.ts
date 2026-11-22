@@ -109,8 +109,10 @@ export async function requestOcsp(
   url: string,
   certDer: Uint8Array,
   issuerDer: Uint8Array,
-  httpClient: HttpClient
+  httpClient: HttpClient,
+  signal?: AbortSignal
 ): Promise<Uint8Array> {
+  signal?.throwIfAborted();
   const request = await buildOcspRequest(certDer, issuerDer);
   const body = await fetchBytes(
     httpClient,
@@ -119,6 +121,7 @@ export async function requestOcsp(
       method: 'POST',
       headers: { 'Content-Type': 'application/ocsp-request', Accept: 'application/ocsp-response' },
       body: request,
+      signal,
     },
     'OCSP request'
   );

@@ -70,6 +70,8 @@ export interface CollectOptions {
    * falls short of the LT level even though everything else is present.
    */
   timestampToken?: Uint8Array;
+  /** Optional cancellation signal forwarded to OCSP and CRL fetches. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -81,6 +83,7 @@ export interface CollectOptions {
  * is not checked - nothing revokes a trust anchor.
  */
 export async function collectValidationMaterial(options: CollectOptions): Promise<ValidationMaterial> {
+  options.signal?.throwIfAborted();
   const material: ValidationMaterial = {
     certificates: [options.certDer, ...options.chainDer, ...(options.supplied?.certificates ?? [])],
     ocspResponses: [...(options.supplied?.ocspResponses ?? [])],
@@ -88,23 +91,24 @@ export async function collectValidationMaterial(options: CollectOptions): Promis
     problems: [],
   };
 
-  if (options.fetchRevocation === false) return material;
-
+  const fetchRevocation = options.fetchRevocation !== false;
   const chain = [options.certDer, ...options.chainDer];
-  for (let i = 0; i < chain.length; i++) {
-    const issuer = chain[i + 1];
-    if (!issuer) {
-      // The last certificate in the chain is the trust anchor. Nothing revokes
-      // a trust anchor - a validator decides whether to trust it, and there is
-      // no issuer above it to ask - so it is not evidence we can or should
-      // gather. Stopping here is what keeps `problems` meaningful: a root with
-      // no AIA is normal, not a shortfall worth reporting.
-      break;
+  if (fetchRevocation) {
+    for (let i = 0; i < chain.length; i++) {
+      const issuer = chain[i + 1];
+      if (!issuer) {
+        // The last certificate in the chain is the trust anchor. Nothing revokes
+        // a trust anchor - a validator decides whether to trust it, and there is
+        // no issuer above it to ask - so it is not evidence we can or should
+        // gather. Stopping here is what keeps `problems` meaningful: a root with
+        // no AIA is normal, not a shortfall worth reporting.
+        break;
+      }
+      await collectFor(chain[i], issuer, material, options.httpClient, i, options.signal);
     }
-    await collectFor(chain[i], issuer, material, options.httpClient, i);
   }
 
-  await collectForTimestamp(options.timestampToken, chain, material, options.httpClient);
+  await collectForTimestamp(options.timestampToken, chain, material, options.httpClient, fetchRevocation, options.signal);
 
   return material;
 }
@@ -123,7 +127,9 @@ async function collectForTimestamp(
   timestampToken: Uint8Array | undefined,
   known: readonly Uint8Array[],
   material: ValidationMaterial,
-  httpClient: HttpClient
+  httpClient: HttpClient,
+  fetchRevocation: boolean,
+  signal?: AbortSignal
 ): Promise<void> {
   if (!timestampToken || timestampToken.length === 0) return;
 
@@ -137,10 +143,11 @@ async function collectForTimestamp(
     const cert = tsaCerts[i];
     if (!material.certificates.some(held => equalBytes(held, cert))) material.certificates.push(cert);
 
+    if (!fetchRevocation) continue;
     const issuer = findIssuer(cert, known) ?? findIssuer(cert, tsaCerts);
     // Self-signed, or an issuer we do not hold: nothing to ask about.
     if (!issuer || equalBytes(issuer, cert)) continue;
-    await collectFor(cert, issuer, material, httpClient, -(i + 1));
+    await collectFor(cert, issuer, material, httpClient, -(i + 1), signal);
   }
 }
 
@@ -170,18 +177,20 @@ async function collectFor(
   issuer: Uint8Array,
   material: ValidationMaterial,
   httpClient: HttpClient,
-  index: number
+  index: number,
+  signal?: AbortSignal
 ): Promise<void> {
   const responders = ocspUrls(subject);
   for (const url of responders) {
     try {
-      material.ocspResponses.push(await requestOcsp(url, subject, issuer, httpClient));
+      material.ocspResponses.push(await requestOcsp(url, subject, issuer, httpClient, signal));
       return;
     } catch (error) {
+      if (signal?.aborted) throw error;
       material.problems.push(`certificate ${index}: OCSP at ${url} failed - ${message(error)}`);
     }
   }
-  await collectCrlOnly(subject, material, httpClient, index, responders.length > 0);
+  await collectCrlOnly(subject, material, httpClient, index, responders.length > 0, signal);
 }
 
 async function collectCrlOnly(
@@ -189,7 +198,8 @@ async function collectCrlOnly(
   material: ValidationMaterial,
   httpClient: HttpClient,
   index: number,
-  afterOcspFailure = false
+  afterOcspFailure = false,
+  signal?: AbortSignal
 ): Promise<void> {
   const urls = crlUrls(subject);
   if (urls.length === 0) {
@@ -200,9 +210,10 @@ async function collectCrlOnly(
   }
   for (const url of urls) {
     try {
-      material.crls.push(await fetchCrl(url, httpClient));
+      material.crls.push(await fetchCrl(url, httpClient, signal));
       return;
     } catch (error) {
+      if (signal?.aborted) throw error;
       material.problems.push(`certificate ${index}: CRL at ${url} failed - ${message(error)}`);
     }
   }
@@ -217,17 +228,20 @@ async function collectCrlOnly(
  */
 export async function fetchIssuerCertificate(
   certDer: Uint8Array,
-  httpClient: HttpClient
+  httpClient: HttpClient,
+  signal?: AbortSignal
 ): Promise<Uint8Array | undefined> {
+  signal?.throwIfAborted();
   for (const url of caIssuerUrls(certDer)) {
     try {
       const body = await fetchBytes(
         httpClient,
-        { url, method: 'GET', headers: { Accept: 'application/pkix-cert' } },
+        { url, method: 'GET', headers: { Accept: 'application/pkix-cert' }, signal },
         'issuer certificate download'
       );
       if (body.length > 0 && body[0] === 0x30) return body;
-    } catch {
+    } catch (error) {
+      if (signal?.aborted) throw error;
       // Try the next URL; the caller learns nothing useful from a partial failure here.
     }
   }

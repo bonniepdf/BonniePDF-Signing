@@ -38,6 +38,8 @@ export interface DocumentTimestampOptions {
   httpClient?: HttpClient;
   /** 0-based page the (invisible) timestamp widget is attached to. */
   page?: number;
+  /** Optional cancellation signal forwarded to the TSA request. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -51,6 +53,7 @@ export async function appendDocumentTimestamp(
   document: Uint8Array,
   options: DocumentTimestampOptions
 ): Promise<Uint8Array> {
+  options.signal?.throwIfAborted();
   const info = parsePdf(document, options.page ?? 0);
 
   let nextId = info.size;
@@ -101,6 +104,7 @@ export async function appendDocumentTimestamp(
     url: options.timestampUrl,
     hashName: options.hashName ?? 'SHA-256',
     httpClient: options.httpClient,
+    signal: options.signal,
   });
 
   injectContents(withPlaceholders, contentsStart, contentsEnd, token);

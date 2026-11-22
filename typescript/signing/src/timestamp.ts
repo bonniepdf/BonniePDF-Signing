@@ -23,6 +23,8 @@ export interface TimestampOptions {
   hashName?: 'SHA-256' | 'SHA-384' | 'SHA-512';
   /** Optional transport override (defaults to global `fetch`). */
   httpClient?: HttpClient;
+  /** Optional cancellation signal forwarded to the HTTP transport. */
+  signal?: AbortSignal;
 }
 
 const HASH_OID: Record<string, string> = {
@@ -141,6 +143,7 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
  * `TimeStampToken` ready to embed in CMS.
  */
 export async function requestTimestamp(data: Uint8Array, options: TimestampOptions): Promise<Uint8Array> {
+  options.signal?.throwIfAborted();
   const hashName = options.hashName ?? 'SHA-256';
   const imprint = new Uint8Array(await crypto.subtle.digest(hashName, data as BufferSource));
   const nonce = crypto.getRandomValues(new Uint8Array(16));
@@ -156,6 +159,7 @@ export async function requestTimestamp(data: Uint8Array, options: TimestampOptio
         Accept: 'application/timestamp-reply',
       },
       body: req,
+      signal: options.signal,
     },
     'timestamp request'
   );

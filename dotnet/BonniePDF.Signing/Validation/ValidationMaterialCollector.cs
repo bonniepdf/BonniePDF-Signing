@@ -68,6 +68,7 @@ internal static class ValidationMaterialCollector
         byte[] timestampToken,
         CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         var material = new ValidationMaterial();
         material.Certificates.Add(certDer);
         material.Certificates.AddRange(chainDer);
@@ -75,27 +76,29 @@ internal static class ValidationMaterialCollector
         if (supplied?.OcspResponses is not null) material.OcspResponses.AddRange(supplied.OcspResponses);
         if (supplied?.Crls is not null) material.Crls.AddRange(supplied.Crls);
 
-        if (!fetchRevocation) return material;
-
         var chain = new List<byte[]> { certDer };
         chain.AddRange(chainDer);
 
-        for (int i = 0; i < chain.Count; i++)
+        if (fetchRevocation)
         {
-            if (i + 1 >= chain.Count)
+            for (int i = 0; i < chain.Count; i++)
             {
-                // The last certificate in the chain is the trust anchor. Nothing
-                // revokes a trust anchor - a validator decides whether to trust
-                // it, and there is no issuer above it to ask - so it is not
-                // evidence we can or should gather. Stopping here is what keeps
-                // Problems meaningful: a root with no AIA is normal, not a
-                // shortfall worth reporting.
-                break;
+                if (i + 1 >= chain.Count)
+                {
+                    // The last certificate in the chain is the trust anchor. Nothing
+                    // revokes a trust anchor - a validator decides whether to trust
+                    // it, and there is no issuer above it to ask - so it is not
+                    // evidence we can or should gather. Stopping here is what keeps
+                    // Problems meaningful: a root with no AIA is normal, not a
+                    // shortfall worth reporting.
+                    break;
+                }
+                await CollectForAsync(chain[i], chain[i + 1], material, httpClient, i, ct).ConfigureAwait(false);
             }
-            await CollectForAsync(chain[i], chain[i + 1], material, httpClient, i, ct).ConfigureAwait(false);
         }
 
-        await CollectForTimestampAsync(timestampToken, chain, material, httpClient, ct).ConfigureAwait(false);
+        await CollectForTimestampAsync(timestampToken, chain, material, httpClient, fetchRevocation, ct)
+            .ConfigureAwait(false);
 
         return material;
     }
@@ -114,7 +117,7 @@ internal static class ValidationMaterialCollector
     /// </remarks>
     private static async Task CollectForTimestampAsync(
         byte[] timestampToken, IReadOnlyList<byte[]> known, ValidationMaterial material,
-        SigningHttpClient httpClient, CancellationToken ct)
+        SigningHttpClient httpClient, bool fetchRevocation, CancellationToken ct)
     {
         if (timestampToken is null || timestampToken.Length == 0) return;
 
@@ -144,6 +147,7 @@ internal static class ValidationMaterialCollector
             byte[] tsaCert = tsaCerts[i];
             if (!Contains(material.Certificates, tsaCert)) material.Certificates.Add(tsaCert);
 
+            if (!fetchRevocation) continue;
             byte[] issuer = FindIssuer(tsaCert, known) ?? FindIssuer(tsaCert, tsaCerts);
             if (issuer is null || Equal(issuer, tsaCert))
             {

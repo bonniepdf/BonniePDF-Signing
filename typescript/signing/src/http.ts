@@ -18,6 +18,7 @@ export interface HttpRequest {
   readonly method: 'GET' | 'POST';
   readonly headers: Readonly<Record<string, string>>;
   readonly body?: Uint8Array;
+  readonly signal?: AbortSignal;
 }
 
 /** The response, as raw bytes - none of these protocols return text. */
@@ -38,12 +39,14 @@ export const defaultHttpClient: HttpClient = async request => {
     method: request.method,
     headers: { ...request.headers },
     body: request.body ? (request.body as BufferSource) : undefined,
+    signal: request.signal,
   });
   return { status: response.status, body: new Uint8Array(await response.arrayBuffer()) };
 };
 
 /** Runs a request and throws on any non-2xx status, naming `what` in the error. */
 export async function fetchBytes(client: HttpClient, request: HttpRequest, what: string): Promise<Uint8Array> {
+  request.signal?.throwIfAborted();
   const { status, body } = await client(request);
   if (status < 200 || status >= 300) throw new Error(`${what}: HTTP ${status} from ${request.url}`);
   return body;

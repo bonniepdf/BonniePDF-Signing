@@ -22,6 +22,12 @@ import { buildDssRevision, needsEsicExtension } from './dss';
 import { appendDocumentTimestamp } from './docTimestamp';
 import { collectValidationMaterial } from './validation';
 
+/** Optional per-call execution options for {@link signPdf}. */
+export interface SignPdfOptions {
+  /** Optional cancellation signal forwarded to timestamp and revocation HTTP calls. */
+  signal?: AbortSignal;
+}
+
 /**
  * Embed a digital signature into a PDF produced by `@bonniepdf/core`, applied as
  * a minimal incremental update.
@@ -32,9 +38,16 @@ import { collectValidationMaterial } from './validation';
  *
  * @param pdfBytes The finished PDF from `Document.generateBytesAsync()`.
  * @param settings Certificate, key, algorithm, profile, and optional metadata.
+ * @param options Optional execution controls such as an `AbortSignal`.
  * @returns A new `Uint8Array` containing the signed PDF.
  */
-export async function signPdf(pdfBytes: Uint8Array, settings: SignatureSettings): Promise<Uint8Array> {
+export async function signPdf(
+  pdfBytes: Uint8Array,
+  settings: SignatureSettings,
+  options?: SignPdfOptions
+): Promise<Uint8Array> {
+  const signal = options?.signal;
+  signal?.throwIfAborted();
   if (!(pdfBytes instanceof Uint8Array)) throw new Error('pdfBytes must be a Uint8Array');
   const config = normalizeSettings(settings);
   const params = getAlgorithmParams(config.algorithm);
@@ -98,6 +111,7 @@ export async function signPdf(pdfBytes: Uint8Array, settings: SignatureSettings)
           url: config.timestampUrl!,
           hashName: params.hashName,
           httpClient: config.httpClient,
+          signal,
         })
     : undefined;
 
@@ -111,6 +125,7 @@ export async function signPdf(pdfBytes: Uint8Array, settings: SignatureSettings)
     pades,
     timestamp,
   });
+  signal?.throwIfAborted();
 
   // 5. Inject the hex-encoded envelope into /Contents.
   injectContents(withPlaceholders, contentsStart, contentsEnd, cms);
@@ -127,6 +142,7 @@ export async function signPdf(pdfBytes: Uint8Array, settings: SignatureSettings)
     supplied: config.validationMaterial,
     fetchRevocation: config.fetchRevocation,
     timestampToken,
+    signal,
   });
   config.onValidationMaterial?.(material);
 
@@ -147,6 +163,8 @@ export async function signPdf(pdfBytes: Uint8Array, settings: SignatureSettings)
     timestampUrl: config.documentTimestampUrl ?? config.timestampUrl!,
     hashName: params.hashName as 'SHA-256' | 'SHA-384' | 'SHA-512',
     httpClient: config.httpClient,
+    page: config.appearance?.page,
+    signal,
   });
   return out;
 }

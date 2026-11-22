@@ -10,10 +10,11 @@ import { pemToDer } from './pem';
 import { HttpClient, fetchBytes } from './http';
 
 /** Fetch one CRL and return it as DER, accepting a PEM-armoured response. */
-export async function fetchCrl(url: string, httpClient: HttpClient): Promise<Uint8Array> {
+export async function fetchCrl(url: string, httpClient: HttpClient, signal?: AbortSignal): Promise<Uint8Array> {
+  signal?.throwIfAborted();
   const body = await fetchBytes(
     httpClient,
-    { url, method: 'GET', headers: { Accept: 'application/pkix-crl' } },
+    { url, method: 'GET', headers: { Accept: 'application/pkix-crl' }, signal },
     'CRL download'
   );
   return normalizeCrl(body);

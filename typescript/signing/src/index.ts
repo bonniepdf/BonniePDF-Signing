@@ -9,6 +9,7 @@
  * `@bonniepdf/core`.
  */
 export { signPdf } from './signPdf';
+export type { SignPdfOptions } from './signPdf';
 export { SigningAlgorithm } from './SigningAlgorithm';
 export type { AlgorithmParams } from './SigningAlgorithm';
 export type { SignatureSettings, PadesLevel } from './SignatureSettings';
