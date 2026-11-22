@@ -1,4 +1,4 @@
-import { SignatureSettings } from './SignatureSettings';
+import { SignatureSettings, normalizeSettings } from './SignatureSettings';
 import { SigningAlgorithm } from './SigningAlgorithm';
 
 /**
@@ -17,6 +17,13 @@ export class SignatureOptions {
 
   /** Sets the PEM-encoded PKCS#8 private key. */
   withPrivateKey(privateKeyPem: string): this {
+    this.settings.privateKeyPem = privateKeyPem;
+    return this;
+  }
+
+  /** Sets the PEM-encoded certificate and PKCS#8 private key together. */
+  withPem(certificatePem: string, privateKeyPem: string): this {
+    this.settings.certificatePem = certificatePem;
     this.settings.privateKeyPem = privateKeyPem;
     return this;
   }
@@ -74,8 +81,8 @@ export class SignatureOptions {
   }
 
   /**
-   * Selects the PAdES baseline level (`'b-b'` or `'b-t'`). `'b-t'` also needs
-   * {@link withTimestamp}.
+   * Selects the PAdES baseline level (`'b-b'`, `'b-t'`, `'b-lt'`, or `'b-lta'`).
+   * `'b-t'` and above also require {@link withTimestamp}.
    */
   usingPades(level: NonNullable<SignatureSettings['padesLevel']>): this {
     this.settings.padesLevel = level;
@@ -89,7 +96,39 @@ export class SignatureOptions {
   withTimestamp(timestampUrl: string, httpClient?: SignatureSettings['httpClient']): this {
     this.settings.timestampUrl = timestampUrl;
     if (httpClient) this.settings.httpClient = httpClient;
-    if (!this.settings.padesLevel || this.settings.padesLevel === 'b-b') this.settings.padesLevel = 'b-t';
+    if (!this.settings.padesLevel || this.settings.padesLevel === 'none' || this.settings.padesLevel === 'b-b') {
+      this.settings.padesLevel = 'b-t';
+    }
+    return this;
+  }
+
+  /** Sets a separate TSA endpoint for the PAdES B-LTA document timestamp. */
+  withDocumentTimestamp(documentTimestampUrl: string): this {
+    this.settings.documentTimestampUrl = documentTimestampUrl;
+    return this;
+  }
+
+  /** Sets the HTTP transport used for timestamping, OCSP, and CRL requests. */
+  withHttpClient(httpClient: NonNullable<SignatureSettings['httpClient']>): this {
+    this.settings.httpClient = httpClient;
+    return this;
+  }
+
+  /** Sets caller-supplied validation material to embed for PAdES B-LT and B-LTA. */
+  withValidationMaterial(validationMaterial: NonNullable<SignatureSettings['validationMaterial']>): this {
+    this.settings.validationMaterial = validationMaterial;
+    return this;
+  }
+
+  /** Controls whether revocation evidence (OCSP/CRL) is fetched over the network. */
+  withFetchRevocation(fetchRevocation: boolean): this {
+    this.settings.fetchRevocation = fetchRevocation;
+    return this;
+  }
+
+  /** Sets the per-call callback receiving the validation material embedded in the DSS. */
+  withOnValidationMaterial(onValidationMaterial: NonNullable<SignatureSettings['onValidationMaterial']>): this {
+    this.settings.onValidationMaterial = onValidationMaterial;
     return this;
   }
 
@@ -99,20 +138,11 @@ export class SignatureOptions {
     return this;
   }
 
-  /** Builds the {@link SignatureSettings}. Throws if cert/key are missing. */
+  /** Builds the {@link SignatureSettings}. Throws if required inputs are missing. */
   build(): SignatureSettings {
-    const hasPfx = this.settings.pkcs12 instanceof Uint8Array && this.settings.pkcs12.length > 0;
-    if (!hasPfx) {
-      if (!this.settings.certificatePem) {
-        throw new Error('certificate is required: call withCertificate() or withPkcs12()');
-      }
-      if (!this.settings.privateKeyPem) {
-        throw new Error('private key is required: call withPrivateKey() or withPkcs12()');
-      }
-    }
-    return {
+    return normalizeSettings({
       algorithm: SigningAlgorithm.Sha256Rsa,
       ...this.settings,
-    } as SignatureSettings;
+    } as SignatureSettings);
   }
 }

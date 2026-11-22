@@ -600,4 +600,66 @@ public sealed class LtvTests : IDisposable
     [Fact]
     public void NeedsEsicExtension_TrueForAPdfWithNoVersionHeader() =>
         Assert.True(PdfIncrementalUpdate.NeedsEsicExtension([1, 2, 3]));
+
+    [Fact]
+    public async Task SignAsync_PropagatesPreCancelledToken()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            PdfSigner.SignAsync(MakePdf(), new SignatureSettings
+            {
+                CertificatePem = _signer.CertPem,
+                PrivateKeyPem = _signer.KeyPem,
+                PadesLevel = PadesLevel.BB,
+            }, cts.Token));
+    }
+
+    [Fact]
+    public async Task Blt_ExtractsTsaCertificatesEvenWhenFetchRevocationIsFalse()
+    {
+        int before = _ocsp.Requests;
+        ValidationMaterial? captured = null;
+        await PdfSigner.SignAsync(MakePdf(), new SignatureSettings
+        {
+            CertificatePem = _signer.CertPem,
+            PrivateKeyPem = _signer.KeyPem,
+            CertificateChainPem = [_ca.CertPem],
+            PadesLevel = PadesLevel.BLT,
+            TimestampUrl = TsaUrl,
+            HttpClient = TestHttpClient(),
+            FetchRevocation = false,
+            OnValidationMaterial = m => captured = m,
+        });
+
+        Assert.Equal(before, _ocsp.Requests);
+        Assert.NotNull(captured);
+        Assert.Contains(captured!.Certificates, c => c.SequenceEqual(_tsaIdentity.CertDer));
+    }
+
+    [Fact]
+    public void SignatureOptions_SupportsFullBuilderParityAndValidatesPadesLevel()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new SignatureOptions()
+                .WithCertificate(_signer.CertPem)
+                .WithPrivateKey(_signer.KeyPem)
+                .UsingPades(PadesLevel.BT)
+                .Build());
+
+        DateTimeOffset when = new(2026, 1, 15, 9, 30, 0, TimeSpan.Zero);
+        SignatureSettings built = new SignatureOptions()
+            .WithPem(_signer.CertPem, _signer.KeyPem)
+            .WithSigningTime(when)
+            .UsingPades(PadesLevel.BLTA)
+            .WithTimestamp(TsaUrl, TestHttpClient())
+            .WithDocumentTimestamp(TsaUrl)
+            .WithFetchRevocation(false)
+            .WithValidationMaterial(new SuppliedValidationMaterial { Crls = [_crlDer] })
+            .Build();
+
+        Assert.Equal(when, built.SigningTime);
+        Assert.False(built.FetchRevocation);
+        Assert.Equal(TsaUrl, built.DocumentTimestampUrl);
+    }
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { Document, TextBlock, StandardFonts } from '@bonniepdf/core';
 import { signPdf } from '../src/signPdf';
+import { SignatureOptions } from '../src/SignatureOptions';
 import { SigningAlgorithm } from '../src/SigningAlgorithm';
 import { latin1Decode, indexOfAscii, readObjectBody, readOptionalRef } from '../src/pdf';
 import { needsEsicExtension, pdfHeaderVersion } from '../src/dss';
@@ -485,5 +486,94 @@ describe('level validation', () => {
 
   it('treats a PDF with no version header as needing the ESIC extension', () => {
     expect(needsEsicExtension(new Uint8Array([1, 2, 3]))).toBe(true);
+  });
+});
+
+describe('cancellation, offline TSA certs, DocTimeStamp page, and SignatureOptions parity', () => {
+  it('propagates caller AbortSignal immediately from signPdf', async () => {
+    const controller = new AbortController();
+    controller.abort(new Error('cancelled-by-caller'));
+    await expect(
+      signPdf(
+        await makePdf(),
+        { certificatePem: signer.certPem, privateKeyPem: signer.keyPem, padesLevel: 'b-b' },
+        { signal: controller.signal }
+      )
+    ).rejects.toThrow('cancelled-by-caller');
+  });
+
+  it('propagates caller AbortSignal during revocation collection instead of swallowing it into problems', async () => {
+    const controller = new AbortController();
+    const cancellingClient: HttpClient = async request => {
+      controller.abort(new Error('abort-during-ocsp'));
+      request.signal?.throwIfAborted();
+      return { status: 200, body: new Uint8Array() };
+    };
+
+    await expect(
+      collectValidationMaterial({
+        certDer: signer.certDer,
+        chainDer: [ca.certDer],
+        httpClient: cancellingClient,
+        signal: controller.signal,
+      })
+    ).rejects.toThrow('abort-during-ocsp');
+  });
+
+  it('extracts TSA certificates from timestampToken even when fetchRevocation is false', async () => {
+    const before = ocsp.requests;
+    let captured: { certificates: Uint8Array[]; ocspResponses: Uint8Array[]; crls: Uint8Array[] } | undefined;
+    await sign('b-lt', {
+      fetchRevocation: false,
+      onValidationMaterial: m => {
+        captured = m;
+      },
+    });
+    expect(ocsp.requests).toBe(before);
+    expect(captured).toBeDefined();
+    expect(captured!.certificates.some(c => c.length === tsa.identity.certDer.length && c.every((b, i) => b === tsa.identity.certDer[i]))).toBe(true);
+  });
+
+  it('attaches B-LTA DocTimeStamp widget to appearance.page when signing a non-first page', async () => {
+    const doc = new Document();
+    doc.add(new TextBlock('Page 1', { fontName: StandardFonts.Helvetica, fontSize: 12 }));
+    const p2 = doc.addPage();
+    p2.add(new TextBlock('Page 2', { fontName: StandardFonts.Helvetica, fontSize: 12 }));
+    const twoPagePdf = await doc.generateBytesAsync();
+    doc.dispose();
+
+    const signed = await signPdf(twoPagePdf, {
+      certificatePem: signer.certPem,
+      privateKeyPem: signer.keyPem,
+      certificateChainPem: [ca.certPem],
+      padesLevel: 'b-lta',
+      timestampUrl: TSA_URL,
+      httpClient: testHttpClient(),
+      appearance: { page: 1, rect: [72, 72, 180, 50] },
+    });
+
+    const text = latin1Decode(signed);
+    const sigMatch = text.match(/\/T \(Signature1\)[\s\S]*?\/P (\d+) 0 R/);
+    const tsMatch = text.match(/\/T \(Timestamp2\)[\s\S]*?\/P (\d+) 0 R/);
+    expect(sigMatch).not.toBeNull();
+    expect(tsMatch).not.toBeNull();
+    expect(tsMatch![1]).toBe(sigMatch![1]);
+  });
+
+  it('exposes full SignatureOptions builder parity and validates timestampUrl requirement', () => {
+    expect(() =>
+      new SignatureOptions().withPem(signer.certPem, signer.keyPem).usingPades('b-t').build()
+    ).toThrow(/timestampUrl/);
+
+    const built = new SignatureOptions()
+      .withPem(signer.certPem, signer.keyPem)
+      .usingPades('b-lta')
+      .withTimestamp(TSA_URL)
+      .withDocumentTimestamp(TSA_URL)
+      .withFetchRevocation(false)
+      .withValidationMaterial({ crls: [crlDer] })
+      .build();
+    expect(built.fetchRevocation).toBe(false);
+    expect(built.documentTimestampUrl).toBe(TSA_URL);
   });
 });
