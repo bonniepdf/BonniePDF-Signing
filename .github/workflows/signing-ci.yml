@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: bonniepdf/BonniePDF-NET
-          ref: b668c634a1d365467b6c1b6f3c56b800ac210bf4 # v2026.11.21
+          ref: 6f30939a467a350a099bb1fbc6b7cdadf92c423a # v2026.11.23
           path: BonniePDF-NET
 
       - name: Setup .NET
@@ -90,7 +90,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: bonniepdf/BonniePDF-NET
-          ref: b668c634a1d365467b6c1b6f3c56b800ac210bf4 # v2026.11.21
+          ref: 6f30939a467a350a099bb1fbc6b7cdadf92c423a # v2026.11.23
           path: BonniePDF-NET
 
       - name: Setup .NET
@@ -123,7 +123,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: bonniepdf/BonniePDF-NET
-          ref: b668c634a1d365467b6c1b6f3c56b800ac210bf4 # v2026.11.21
+          ref: 6f30939a467a350a099bb1fbc6b7cdadf92c423a # v2026.11.23
           path: BonniePDF-NET
 
       - name: Setup .NET

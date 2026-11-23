@@ -6,7 +6,7 @@ runs:
     - uses: actions/checkout@v4
       with:
         repository: bonniepdf/BonniePDF-TypeScript
-        ref: 50229e2f06b6ffe36c6ede2d740309bf86d8149d # v2026.11.21
+        ref: 79d7bcc591a3268035ed1d49373ff744ed508f7c # v2026.11.23
         path: BonniePDF-TypeScript
         persist-credentials: false
     - uses: actions/setup-node@v4
