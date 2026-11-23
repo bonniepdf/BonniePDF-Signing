@@ -1,6 +1,6 @@
 {
   "name": "@bonniepdf/signing",
-  "version": "2026.11.21",
+  "version": "2026.11.23",
   "description": "Sign BonniePDF-generated PDFs in TypeScript and JavaScript with visible or invisible CMS digital signatures, PAdES baseline profiles from B-B through B-LTA, and RFC 3161 timestamps. Use RSA or ECDSA with PEM or PKCS#12 credentials. Uses the Web Crypto API and has zero runtime dependencies.",
   "type": "module",
   "main": "./dist/index.cjs",

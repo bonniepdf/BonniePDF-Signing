@@ -8,7 +8,7 @@
     <RootNamespace>BonniePDF.Signing</RootNamespace>
     <AssemblyName>BonniePDF.Signing</AssemblyName>
     <Description>Sign BonniePDF-generated PDFs in .NET with visible or invisible CMS digital signatures, PAdES baseline profiles from B-B through B-LTA, and RFC 3161 timestamps. Supports RSA and ECDSA with PEM or PKCS#12 credentials. Signing is included with every paid BonniePDF licence and is free for non-production evaluation.</Description>
-    <Version>2026.11.21</Version>
+    <Version>2026.11.23</Version>
     <Authors>CodeFocus Limited</Authors>
     <Copyright>Copyright © 2026 CodeFocus Limited</Copyright>
     <!-- Part of the Software under the BonniePDF Commercial License Agreement 1.0,
